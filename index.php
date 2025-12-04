@@ -1,10 +1,16 @@
+<?php
+// FILE: index.php
+// Fungsi: Mengaktifkan PHP Session dan memuat tampilan utama.
+session_start(); 
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SWIMS – Secure Warehouse Inventory System</title>
-  <link rel="stylesheet" href="css/style.css">
+  <!-- Pastikan file CSS Anda sudah ada di sini -->
+  <link rel="stylesheet" href="css/style.css"> 
 </head>
 <body>
   <header>
@@ -19,15 +25,15 @@
 
   <main id="content" class="container"></main>
 
-  <!-- QR code lib -->
+  <!-- QR code lib (Untuk fitur Supervisor Notes) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
+  <!-- Load JavaScript Logic -->
   <script src="js/app.js"></script>
   <script>
-    initApp();
-    renderUserBar();
-    renderMenu();
-    loadPage('login');
+    // Inisialisasi aplikasi. Memuat status user dari Session/API
+    checkSessionAndRender(); 
+    // loadPage('login'); // Tidak perlu, karena checkSessionAndRender akan memuat halaman yang sesuai
   </script>
 </body>
 </html>
