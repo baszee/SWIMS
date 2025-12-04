@@ -1,34 +1,38 @@
 <div class="card">
-  <h2>Login / Pilih Role (Demo)</h2>
-  <p class="small">Pilih role untuk demo cepat.</p>
+  <h2>🔐 Login</h2>
+  <p class="small">Pilih role untuk masuk ke sistem.</p>
 
-  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-    <button class="btn primary" onclick="loginAs('staff1','staff')">Login as Staff</button>
-    <button class="btn primary" onclick="loginAs('super1','supervisor')">Login as Supervisor</button>
-    <button class="btn primary" onclick="loginAs('admin1','admin')">Login as Admin</button>
-    <button class="btn primary" onclick="loginAs('owner1','owner')">Login as Owner</button>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+    <button class="btn primary" onclick="loginAs('staff1','staff')">Login sebagai Staff</button>
+    <button class="btn primary" onclick="loginAs('super1','supervisor')">Login sebagai Supervisor</button>
+    <button class="btn primary" onclick="loginAs('admin1','admin')">Login sebagai Admin</button>
+    <button class="btn primary" onclick="loginAs('owner1','owner')">Login sebagai Owner</button>
   </div>
 
-  <hr style="margin:14px 0;">
-  <h4>Buat user baru (Admin dapat pake halaman Admin nanti)</h4>
-  <p class="small">Form demo: menyimpan user di localStorage (tanpa password).</p>
+  <hr style="margin:20px 0;">
+  
+  <h4>Buat User Baru</h4>
+  <p class="small">Admin dapat mengelola user melalui menu User Management.</p>
+  
   <label>Username</label>
   <input id="signup_username" placeholder="contoh: staff2">
   <label>Role</label>
   <select id="signup_role">
-    <option value="staff">staff</option>
-    <option value="supervisor">supervisor</option>
-    <option value="admin">admin</option>
-    <option value="owner">owner</option>
+    <option value="staff">Staff</option>
+    <option value="supervisor">Supervisor</option>
+    <option value="admin">Admin</option>
+    <option value="owner">Owner</option>
   </select>
   <button class="btn primary" onclick="(function(){
     const u=document.getElementById('signup_username').value.trim();
     const r=document.getElementById('signup_role').value;
-    if(!u) return alert('Isi username');
+    if(!u) return alert('⚠️ Isi username');
     const users = storageGet('swims_users')||[];
-    if(users.find(x=>x.username===u)) return alert('Username ada');
+    if(users.find(x=>x.username===u)) return alert('⚠️ Username sudah ada');
     const id = users.length? Math.max(...users.map(x=>x.id))+1:1;
-    users.push({id,username:u,role:r}); storageSet('swims_users',users); alert('User dibuat'); 
+    users.push({id,username:u,role:r}); 
+    storageSet('swims_users',users); 
+    alert('✅ User berhasil dibuat: ' + u); 
     document.getElementById('signup_username').value='';
-  })()">Buat user</button>
+  })()">Buat User</button>
 </div>
