@@ -1,39 +1,25 @@
-<?php
-// FILE: index.php
-// Fungsi: Mengaktifkan PHP Session dan memuat tampilan utama.
-session_start(); 
-?>
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SWIMS – Secure Warehouse Inventory System</title>
-  <!-- Pastikan file CSS Anda sudah ada di sini -->
-  <link rel="stylesheet" href="css/style.css"> 
-</head>
-<body>
-  <header>
-    <div class="brand">
-      <h1>SWIMS</h1>
-      <p class="subtitle">Secure Warehouse Inventory Management System</p>
-    </div>
-    <div id="userBar" class="userbar"></div>
-  </header>
-
-  <nav id="menuBar" class="menu"></nav>
-
-  <main id="content" class="container"></main>
-
-  <!-- QR code lib (Untuk fitur Supervisor Notes) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-  <!-- Load JavaScript Logic -->
-  <script src="js/app.js"></script>
-  <script>
-    // Inisialisasi aplikasi. Memuat status user dari Session/API
-    checkSessionAndRender(); 
-    // loadPage('login'); // Tidak perlu, karena checkSessionAndRender akan memuat halaman yang sesuai
-  </script>
-</body>
-</html>
+<div class="card" style="max-width: 400px; margin: 40px auto;">
+  <h2 style="text-align:center; color: var(--primary);">Login SWIMS</h2>
+  <p class="small" style="text-align:center;">Silakan masuk untuk melanjutkan</p>
+  
+  <form id="formLogin">
+    <label>Username</label>
+    <input type="text" id="login_username" required placeholder="Masukkan username">
+    
+    <label>Password</label>
+    <input type="password" id="login_password" required placeholder="Masukkan password">
+    
+    <label>Masuk Sebagai</label>
+    <select id="login_role" required>
+        <option value="" disabled selected>-- Pilih Role --</option>
+        <option value="admin">Administrator</option>
+        <option value="staff">Staff Gudang</option>
+        <option value="supervisor">Supervisor</option>
+        <option value="owner">Owner (Pemilik)</option>
+    </select>
+    
+    <button type="submit" class="btn primary" style="width:100%; margin-top:20px;">Masuk</button>
+    
+    <div id="loginMessage" style="color:var(--danger); margin-top:15px; text-align:center; font-size:0.9rem;"></div>
+  </form>
+</div>
