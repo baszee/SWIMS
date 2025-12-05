@@ -1,7 +1,7 @@
 <?php
 // FILE: api/items.php
 // Fungsi: API CRUD untuk Data Master Barang/Item dan Stok
-// Versi: 2.0 - Tambah endpoint search untuk autocomplete
+// Versi: 2.2 - FIX: Logic filter item 'available' dan Autocomplete Search
 session_start();
 include('../config/db_config.php'); 
 
@@ -43,7 +43,7 @@ try {
             $action = $_GET['action'] ?? 'list';
             
             // =====================================================================
-            // ENDPOINT BARU: SEARCH ITEM (untuk Autocomplete di Barang Masuk)
+            // ENDPOINT: SEARCH ITEM (action=search) - Digunakan oleh Barang Masuk (Autocomplete)
             // =====================================================================
             if ($action === 'search') {
                 $supplier_id = $_GET['supplier_id'] ?? null;
@@ -53,7 +53,7 @@ try {
                     api_response(false, "Supplier ID wajib diisi untuk search.", null, 400);
                 }
                 
-                // Search by SKU atau Nama
+                // Query hanya mengambil item yang APPROVED dan sesuai Supplier
                 $sql = "
                     SELECT 
                         i.id, 
@@ -70,7 +70,6 @@ try {
                 
                 $params = [$supplier_id];
                 
-                // Jika ada query pencarian
                 if (!empty($query)) {
                     $sql .= " AND (i.sku LIKE ? OR i.name LIKE ?)";
                     $search_term = "%{$query}%";
@@ -88,10 +87,11 @@ try {
             }
             
             // =====================================================================
-            // ENDPOINT: AVAILABLE ITEMS (Untuk dropdown di form)
+            // ENDPOINT: AVAILABLE ITEMS (action=available) - Digunakan oleh Barang Keluar (Dropdown)
             // =====================================================================
             elseif ($action === 'available') {
-                $supplier_id = $_GET['supplier_id'] ?? null;
+                // FIX: Endpoint ini sekarang mengambil SEMUA item APPROVED tanpa filter Supplier
+                // Filtering Item berdasarkan Supplier dilakukan di sisi JS (pages/barang_keluar.php)
                 
                 $sql = "
                     SELECT 
@@ -100,27 +100,21 @@ try {
                         i.name, 
                         i.unit, 
                         i.current_stock, 
+                        i.supplier_id, /* Pastikan supplier_id diambil untuk filtering di JS */
                         s.name as supplier_name 
                     FROM items i 
                     JOIN suppliers s ON i.supplier_id = s.id 
                     WHERE i.is_approved = TRUE
+                    ORDER BY i.name ASC
                 ";
                 
-                // Filter by supplier jika ada
-                if ($supplier_id) {
-                    $sql .= " AND i.supplier_id = ?";
-                    $stmt = $pdo->prepare($sql . " ORDER BY i.name ASC");
-                    $stmt->execute([$supplier_id]);
-                } else {
-                    $stmt = $pdo->query($sql . " ORDER BY i.name ASC");
-                }
-                
+                $stmt = $pdo->query($sql);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar item approved berhasil diambil.", $items);
             }
             
             // =====================================================================
-            // ENDPOINT: LIST ALL (Untuk manajemen)
+            // ENDPOINT: LIST ALL (Default - Untuk manajemen Admin)
             // =====================================================================
             else {
                 $stmt = $pdo->query("

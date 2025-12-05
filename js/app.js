@@ -1,8 +1,9 @@
 /*
 |--------------------------------------------------------------------------
-| APLIKASI LOGIC (JS) - MIGRASI TOTAL KE API PHP (CRUD Lengkap)
+| APLIKASI LOGIC (JS) - FIXES KRITIS
 |--------------------------------------------------------------------------
-| Mengintegrasikan API Auth, Suppliers, Recipients, Items, Transactions, dan Approval.
+| 1. Implementasi Opsi "Ajukan Item Baru" (Barang Masuk).
+| 2. FIX Bug Item Filtering di Barang Keluar.
 */
 
 // ---------- DOM & UI Helpers ----------
@@ -62,9 +63,9 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
             z-index: 100;
             max-height: 200px;
             overflow-y: auto;
-            border: 1px solid #ddd;
+            border: 1px solid var(--input-border);
             background: var(--card);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
             width: 100%;
             margin-top: 2px;
             border-radius: 6px;
@@ -72,8 +73,11 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
         .autocomplete-item {
             padding: 10px 12px;
             cursor: pointer;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #f1f5f9;
             font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .autocomplete-item:hover {
             background: #f1f5f9;
@@ -81,11 +85,16 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
         .autocomplete-item:last-child {
             border-bottom: none;
         }
+        .autocomplete-item.disabled {
+            cursor: default;
+            color: var(--muted);
+            font-style: italic;
+        }
         `;
         const styleEl = document.createElement('style');
         styleEl.textContent = modalStyle;
         document.head.appendChild(styleEl);
-        modal.style.display = 'none'; // Sembunyikan secara default setelah styling dimuat
+        modal.style.display = 'none'; 
     }
     
     document.getElementById('modalTitle').textContent = title;
@@ -113,7 +122,6 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
 }
 
 function showLoadingModal(message = "Memuat data...") {
-    // Implementasi Loading modal sederhana
     let loading = document.getElementById('loadingModal');
     if (!loading) {
         loading = document.createElement('div');
@@ -136,7 +144,7 @@ function hideLoadingModal() {
 }
 
 
-// ---------- Storage helpers (Cache lokal untuk data master) ----------
+// ---------- Storage helpers ----------
 function storageGet(key){ 
     try { 
         return JSON.parse(localStorage.getItem(key)); 
@@ -149,10 +157,10 @@ function storageSet(key, val){
     localStorage.setItem(key, JSON.stringify(val)); 
 }
 
-// Global cache untuk data master agar tidak sering fetch
+// Global cache untuk data master
 let masterDataCache = {
     suppliers: [],
-    recipients: [],
+    recipients: [], 
     items: []
 };
 
@@ -175,7 +183,6 @@ function renderUserBar(){
 }
 
 function renderMenu(){
-    // Logika menu tetap sama
     const menu = document.getElementById('menuBar');
     const user = currentUser();
     menu.innerHTML = '';
@@ -277,7 +284,6 @@ function logout(){
 
 // ---------- Page Access Control & Loading ----------
 const ROLE_ALLOWED_PAGES = {
-    // ... (tetap sama)
     'login': ['guest','staff','supervisor','admin','owner'],
     'staff': ['staff'],
     'barang_masuk': ['staff'],
@@ -334,14 +340,13 @@ function loadPage(page){
 async function loadMasterData() {
     showLoadingModal('Mengambil data master (Supplier & Item)...');
     try {
-        const [supplierRes, recipientRes, itemRes] = await Promise.all([
+        // FIX: Hapus recipients dari promise.all karena sudah dihapus dari skema
+        const [supplierRes, itemRes] = await Promise.all([
             fetch('api/suppliers.php?action=list'),
-            fetch('api/recipients.php'),
             fetch('api/items.php?action=available') // Hanya item yang sudah disetujui
         ]);
 
         const supplierData = await supplierRes.json();
-        const recipientData = await recipientRes.json();
         const itemData = await itemRes.json();
 
         if (supplierData.success) {
@@ -350,12 +355,6 @@ async function loadMasterData() {
             console.error('Gagal memuat supplier:', supplierData.message);
         }
         
-        if (recipientData.success) {
-            masterDataCache.recipients = recipientData.data;
-        } else {
-            console.error('Gagal memuat penerima:', recipientData.message);
-        }
-
         if (itemData.success) {
             masterDataCache.items = itemData.data;
         } else {
@@ -374,8 +373,6 @@ async function loadMasterData() {
 
 /**
  * Helper untuk merender riwayat transaksi Staff (IN/OUT)
- * @param {string} type 'IN' atau 'OUT'
- * @param {string} targetDivId ID dari div tempat tabel akan dirender
  */
 async function renderStaffHistory(type, targetDivId) {
     const historyDiv = document.getElementById(targetDivId);
@@ -384,7 +381,6 @@ async function renderStaffHistory(type, targetDivId) {
     historyDiv.innerHTML = '<p>Memuat riwayat...</p>';
     
     try {
-        // Menggunakan endpoint my_history di api/transactions.php
         const response = await fetch(`api/transactions.php?action=my_history&type=${type}`);
         const data = await response.json();
 
@@ -433,9 +429,6 @@ async function renderStaffHistory(type, targetDivId) {
 
 /**
  * Helper untuk mencari item (Autocomplete)
- * @param {number} supplierId ID Supplier yang dipilih
- * @param {string} query Kata kunci pencarian
- * @returns {Promise<Object[]>} Array hasil item
  */
 async function autocompleteItem(supplierId, query) {
     if (!supplierId || query.length < 2) return [];
@@ -455,7 +448,6 @@ async function autocompleteItem(supplierId, query) {
 
 /* init_login - Logic Login Form AJAX (Tidak Berubah) */
 function init_login(){ 
-    // Logika ini tetap sama, memanggil api/auth.php POST
     const form = document.getElementById('formLogin');
     const msg = document.getElementById('loginMessage');
     if (!form) return;
@@ -587,7 +579,7 @@ function init_barang_masuk(){
     const resetItemSelection = (showInput = true) => {
         document.getElementById('bm_item_id').value = '';
         selectedItemId = null;
-        document.getElementById('itemInfo').textContent = `Status Item: -`;
+        document.getElementById('itemInfo').innerHTML = `Status Item: -`;
         resultsDiv.style.display = 'none';
         if (showInput) skuInput.value = '';
     };
@@ -597,26 +589,38 @@ function init_barang_masuk(){
         skuInput.value = `${item.sku} - ${item.name} (${item.unit})`;
         document.getElementById('bm_item_id').value = item.id;
         selectedItemId = item.id;
-        document.getElementById('itemInfo').textContent = `Status Item: APPROVED | Unit: ${item.unit} | Stok Saat Ini: ${item.current_stock}`;
+        document.getElementById('itemInfo').innerHTML = `Status Item: <b>APPROVED</b> | Unit: ${item.unit} | Stok Saat Ini: ${item.current_stock}`;
         resultsDiv.style.display = 'none';
     };
 
     // 1. Event Listener untuk perubahan Supplier
+    skuInput.disabled = true; 
+    skuInput.placeholder = "Pilih Supplier dahulu";
+    
     supplierSelect.onchange = function() {
         selectedSupplierId = this.value;
         resetItemSelection();
-        skuInput.disabled = !selectedSupplierId; // Disable input jika supplier belum dipilih
+        skuInput.disabled = !selectedSupplierId; 
         skuInput.placeholder = selectedSupplierId ? "Ketik SKU atau Nama Item..." : "Pilih Supplier dahulu";
+        resultsDiv.innerHTML = '';
+        resultsDiv.style.display = 'none';
     };
     
     // 2. Event Listener untuk Autocomplete SKU
-    skuInput.disabled = true;
     skuInput.oninput = async (e) => {
         const query = e.target.value;
-        resetItemSelection(false); // Reset ID, tapi jangan reset input text
+        // Reset ID, tapi jangan reset input text
+        document.getElementById('bm_item_id').value = '';
+        selectedItemId = null; 
+        
         resultsDiv.innerHTML = '';
+        document.getElementById('itemInfo').innerHTML = `Status Item: Mencari...`;
 
-        if (!selectedSupplierId) return;
+
+        if (!selectedSupplierId || query.length < 2) {
+             document.getElementById('itemInfo').innerHTML = `Status Item: -`;
+             return;
+        }
 
         const results = await autocompleteItem(selectedSupplierId, query);
         
@@ -629,13 +633,61 @@ function init_barang_masuk(){
                 resultsDiv.appendChild(el);
             });
             resultsDiv.style.display = 'block';
+            document.getElementById('itemInfo').innerHTML = `Status Item: **Pilih Item Ditemukan**`;
+
         } else {
-             resultsDiv.innerHTML = '<div class="autocomplete-item disabled">Tidak ada item APPROVED ditemukan.</div>';
-             resultsDiv.style.display = 'block';
+             // LOGIC INPUT BARU (Jika tidak ada hasil, tawarkan opsi ajukan item baru)
+             document.getElementById('itemInfo').innerHTML = `
+                Status Item: Item tidak ditemukan.<br>
+                <button class="btn btn-sm success" onclick="requestNewItem('${query}', event)" style="margin-top:5px;">+ Ajukan Item Baru (${query})</button>
+             `;
+             resultsDiv.style.display = 'none';
         }
-        
-        if (query.length < 2) resultsDiv.style.display = 'none';
     };
+    
+    // [LOGIC PENTING] Fungsi Ajukan Item Baru (Sesuai usulan Staff)
+    window.requestNewItem = (skuQuery, e) => {
+        // Stop event propagation to prevent multiple triggers
+        if (e) e.stopPropagation();
+        
+        const supplierName = supplierSelect.options[supplierSelect.selectedIndex].textContent;
+        
+        showMessageModal('Ajukan Item Baru?', `Anda akan mengajukan Item Baru dengan SKU: <b>${skuQuery}</b> untuk Klien: <b>${supplierName}</b>. Item akan berstatus PENDING.`, true, async () => {
+            showLoadingModal('Mengajukan Item Baru...');
+
+            const payload = {
+                sku: skuQuery,
+                name: skuQuery, // Default nama sama dengan SKU
+                unit: 'Pcs', // Default Unit
+                supplier_id: selectedSupplierId,
+                current_stock: 0,
+            };
+            
+            try {
+                // Gunakan POST ke API Items.php (yang akan membuatnya PENDING karena role=staff)
+                const response = await fetch('api/items.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                     showMessageModal('✅ Sukses!', `Permintaan Item Baru <b>${skuQuery}</b> berhasil diajukan! Item ini akan aktif setelah Supervisor menyetujuinya.`, false);
+                     // Setelah sukses, item baru ini akan memiliki ID di DB, kita bisa reset form
+                     form.reset();
+                     resetItemSelection();
+                } else {
+                     showMessageModal('❌ Gagal!', data.message, false);
+                }
+            } catch (error) {
+                showMessageModal('Error Jaringan', 'Gagal mengajukan item baru.', false);
+            } finally {
+                hideLoadingModal();
+            }
+        });
+    };
+
 
     // Tutup dropdown jika klik di luar
     document.addEventListener('click', (e) => {
@@ -682,7 +734,7 @@ function init_barang_masuk(){
                 showMessageModal('❌ Gagal!', data.message, false);
             }
         } catch (error) {
-            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi.', false);
+            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi. Cek koneksi server Anda.', false);
             console.error('Transaction submit error:', error);
         } finally {
             hideLoadingModal();
@@ -694,7 +746,7 @@ function init_barang_masuk(){
 }
 
 
-/* init_barang_keluar - Form Barang Keluar (REVISI TOTAL) */
+/* init_barang_keluar - Form Barang Keluar (FIX Filter Item) */
 function init_barang_keluar(){
     const form = document.getElementById('formBarangKeluar');
     if (!form) return;
@@ -716,7 +768,9 @@ function init_barang_keluar(){
         itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
         infoDiv.textContent = 'Stok Saat Ini: -';
         
+        // FIX: Filtering dilakukan di frontend menggunakan item.supplier_id
         const filteredItems = allItems.filter(item => {
+            // Jika supplierId kosong, tampilkan semua item
             return !supplierId || item.supplier_id == supplierId;
         });
 
@@ -724,7 +778,6 @@ function init_barang_keluar(){
             itemSelect.innerHTML += `<option value="${item.id}" data-stock="${item.current_stock}" data-unit="${item.unit}">${item.sku} - ${item.name} (Stok: ${item.current_stock})</option>`;
         });
         
-        // Reset max qty input
         document.getElementById('bk_qty').max = null;
     }
 
@@ -738,7 +791,6 @@ function init_barang_keluar(){
             
             infoDiv.innerHTML = `Stok Tersedia: <b>${stock} ${unit}</b>`;
             
-            // Set max value untuk input qty
             document.getElementById('bk_qty').max = stock;
         } else {
             infoDiv.textContent = 'Stok Saat Ini: -';
@@ -769,7 +821,7 @@ function init_barang_keluar(){
         const note = document.getElementById('bk_note').value;
 
         const selectedItemOption = itemSelect.options[itemSelect.selectedIndex];
-        const availableStock = parseInt(selectedItemOption.getAttribute('data-stock'));
+        const availableStock = selectedItemOption ? parseInt(selectedItemOption.getAttribute('data-stock')) : 0;
 
         // Validasi Sisi Klien
         if (!selectedItemId || !recipientName || !recipientAddress || quantity <= 0) {
@@ -785,8 +837,8 @@ function init_barang_keluar(){
             type: 'OUT',
             item_id: selectedItemId,
             quantity: quantity,
-            recipient_name: recipientName, // Dikirim ke API
-            recipient_address: recipientAddress, // Dikirim ke API
+            recipient_name: recipientName,
+            recipient_address: recipientAddress,
             note: note
         };
         
@@ -806,7 +858,7 @@ function init_barang_keluar(){
                 form.reset();
                 // Muat ulang data master (stok berubah setelah approval) dan riwayat
                 loadMasterData().then(() => {
-                    populateItemDropdown(supplierSelect.value); // Muat ulang dropdown dengan stok terbaru
+                    populateItemDropdown(supplierSelect.value);
                     updateStockInfo();
                     renderStaffHistory('OUT', 'riwayatKeluarPanel');
                 });
@@ -814,7 +866,7 @@ function init_barang_keluar(){
                 showMessageModal('❌ Gagal!', data.message, false);
             }
         } catch (error) {
-            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi.', false);
+            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi. Cek koneksi server Anda.', false);
             console.error('Transaction submit error:', error);
         } finally {
             hideLoadingModal();
@@ -829,13 +881,11 @@ function init_barang_keluar(){
 /* init_supervisor - Dashboard Supervisor */
 function init_supervisor(){
     console.log('Supervisor dashboard loaded.');
-    // TODO: Tambahkan fetch untuk statistik dashboard Supervisor di sini
 }
 
 /* init_admin - Dashboard Admin */
 function init_admin(){
     console.log('Admin dashboard loaded.');
-    // TODO: Tambahkan fetch untuk statistik dashboard Admin di sini
 }
 
 /* init_owner - Dashboard Owner */
@@ -934,8 +984,9 @@ window.showMessageModal = showMessageModal;
 window.handleApprovalAction = handleApprovalAction;
 window.loadMasterData = loadMasterData;
 window.loadStaffDashboard = loadStaffDashboard; 
-window.renderStaffHistory = renderStaffHistory; // Expose helper
-window.autocompleteItem = autocompleteItem; // Expose helper
+window.renderStaffHistory = renderStaffHistory; 
+window.autocompleteItem = autocompleteItem; 
+window.renderItemApprovalContent = renderItemApprovalContent;
 
 // Expose init functions
 window.init_login = init_login;
@@ -952,7 +1003,6 @@ window.init_notes = init_notes;
 window.init_owner_report = init_owner_report;
 window.init_request_item = init_request_item;
 window.init_manage_items = init_manage_items;
-window.renderItemApprovalContent = renderItemApprovalContent;
 
 // Log untuk debugging
 console.log('SWIMS App JS Loaded and API Ready ✅');

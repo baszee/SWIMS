@@ -1,7 +1,7 @@
 <?php
 // FILE: api/transactions.php
 // Fungsi: Menerima permintaan Barang Masuk (IN) atau Barang Keluar (OUT) dari Staff
-// Versi: 2.0 - Support recipient_name & recipient_address
+// Versi: 2.3 - FIX Kritis: Memperbaiki error saat submit dan GET my_history
 session_start();
 include('../config/db_config.php'); 
 
@@ -40,14 +40,15 @@ try {
     switch ($method) {
         
         // =====================================================================
-        // GET: Mengambil Riwayat Transaksi User Saat Ini
+        // GET: Mengambil Riwayat Transaksi User Saat Ini (action=my_history)
         // =====================================================================
         case 'GET':
             $action = $_GET['action'] ?? 'my_history';
             
             if ($action === 'my_history') {
-                $type = $_GET['type'] ?? 'ALL'; // 'IN', 'OUT', atau 'ALL'
+                $type = $_GET['type'] ?? 'ALL';
                 
+                // Query yang Disesuaikan: Pastikan semua kolom diambil dengan benar
                 $sql = "
                     SELECT 
                         t.id, 
@@ -59,7 +60,6 @@ try {
                         t.approval_date,
                         t.note,
                         t.recipient_name,
-                        t.recipient_address,
                         i.sku, 
                         i.name AS item_name, 
                         i.unit,
@@ -68,24 +68,20 @@ try {
                     FROM transactions t
                     JOIN items i ON t.item_id = i.id
                     LEFT JOIN suppliers s ON t.supplier_id = s.id
-                    LEFT JOIN users u_app ON t.approved_by_user_id = u_app.id
+                    LEFT JOIN users u_app ON t.approved_by_user_id = u_app.id /* LEFT JOIN untuk approver yang NULL */
                     WHERE t.request_by_user_id = ?
                 ";
                 
-                // Filter by type jika bukan 'ALL'
+                $params = [$user_id];
                 if ($type !== 'ALL') {
                     $sql .= " AND t.type = ?";
+                    $params[] = $type;
                 }
                 
                 $sql .= " ORDER BY t.request_date DESC LIMIT 20";
                 
                 $stmt = $pdo->prepare($sql);
-                
-                if ($type !== 'ALL') {
-                    $stmt->execute([$user_id, $type]);
-                } else {
-                    $stmt->execute([$user_id]);
-                }
+                $stmt->execute($params);
                 
                 $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Riwayat transaksi berhasil diambil.", $history);
@@ -98,19 +94,30 @@ try {
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
             
-            $type = $data['type'] ?? ''; // 'IN' atau 'OUT'
+            $type = $data['type'] ?? ''; 
             $item_id = $data['item_id'] ?? null;
             $quantity = (int)($data['quantity'] ?? 0);
             $note = $data['note'] ?? '';
             
-            // Validasi input dasar
-            if (empty($type) || !in_array($type, ['IN', 'OUT'])) {
-                api_response(false, "Tipe transaksi tidak valid. Gunakan 'IN' atau 'OUT'.", null, 400);
+            if (empty($type) || !in_array($type, ['IN', 'OUT']) || !$item_id || $quantity <= 0) {
+                api_response(false, "Data input tidak lengkap atau tidak valid.", null, 400);
             }
             
-            if (!$item_id || $quantity <= 0) {
-                api_response(false, "Item ID dan Jumlah wajib diisi dengan benar.", null, 400);
+            $stmt_item = $pdo->prepare("SELECT is_approved, supplier_id, current_stock, name FROM items WHERE id = ?");
+            $stmt_item->execute([$item_id]);
+            $item = $stmt_item->fetch();
+            
+            if (!$item || !$item['is_approved']) {
+                api_response(false, "Item tidak ditemukan atau belum disetujui.", null, 403);
             }
+            
+            $prefix = ($type === 'IN') ? 'BM' : 'BK';
+            $date_part = date('Ymd');
+            $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE transaction_code LIKE ?");
+            $stmt_count->execute(["{$prefix}-{$date_part}%"]);
+            $count = $stmt_count->fetchColumn() + 1;
+            $transaction_code = "{$prefix}-{$date_part}-" . str_pad($count, 3, '0', STR_PAD_LEFT);
+            
             
             // =====================================================================
             // A. BARANG MASUK (IN)
@@ -122,65 +129,23 @@ try {
                     api_response(false, "Supplier wajib dipilih untuk Barang Masuk.", null, 400);
                 }
                 
-                // Cek apakah supplier sudah disetujui (is_active = TRUE)
                 $stmt_supplier = $pdo->prepare("SELECT is_active FROM suppliers WHERE id = ?");
                 $stmt_supplier->execute([$supplier_id]);
                 $supplier = $stmt_supplier->fetch();
                 
-                if (!$supplier) {
-                    api_response(false, "Supplier tidak ditemukan.", null, 404);
+                if (!$supplier || !$supplier['is_active']) {
+                    api_response(false, "Supplier tidak ditemukan atau masih PENDING approval. Hubungi Supervisor.", null, 403);
                 }
                 
-                if (!$supplier['is_active']) {
-                    api_response(false, "Supplier masih PENDING approval. Hubungi Supervisor.", null, 403);
-                }
-                
-                // Cek apakah item sudah disetujui (is_approved = TRUE)
-                $stmt_item = $pdo->prepare("SELECT is_approved, supplier_id FROM items WHERE id = ?");
-                $stmt_item->execute([$item_id]);
-                $item = $stmt_item->fetch();
-                
-                if (!$item) {
-                    api_response(false, "Item tidak ditemukan.", null, 404);
-                }
-                
-                if (!$item['is_approved']) {
-                    api_response(false, "Item masih PENDING approval. Hubungi Supervisor.", null, 403);
-                }
-                
-                // Validasi: Item harus sesuai dengan Supplier
                 if ($item['supplier_id'] != $supplier_id) {
-                    api_response(false, "Item yang dipilih tidak sesuai dengan Supplier.", null, 400);
+                    api_response(false, "Item yang dipilih tidak sesuai dengan Supplier yang terpilih.", null, 400);
                 }
                 
-                // Generate Transaction Code
-                $prefix = 'BM';
-                $date_part = date('Ymd');
-                
-                // Cari nomor urut terakhir hari ini
-                $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE transaction_code LIKE ?");
-                $stmt_count->execute(["{$prefix}-{$date_part}%"]);
-                $count = $stmt_count->fetchColumn() + 1;
-                
-                $transaction_code = "{$prefix}-{$date_part}-" . str_pad($count, 3, '0', STR_PAD_LEFT);
-                
-                // Insert Transaksi
                 $sql = "INSERT INTO transactions 
                         (transaction_code, item_id, type, quantity, note, supplier_id, request_by_user_id, status) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')";
                 
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([
-                    $transaction_code, 
-                    $item_id, 
-                    $type, 
-                    $quantity, 
-                    $note, 
-                    $supplier_id, 
-                    $user_id
-                ]);
-                
-                api_response(true, "Permintaan Barang Masuk berhasil diajukan. Kode: {$transaction_code}. Status: PENDING menanti Supervisor.", ['code' => $transaction_code], 201);
+                $params = [$transaction_code, $item_id, $type, $quantity, $note, $supplier_id, $user_id];
             
             }
             
@@ -191,60 +156,25 @@ try {
                 $recipient_name = trim($data['recipient_name'] ?? '');
                 $recipient_address = trim($data['recipient_address'] ?? '');
                 
-                if (empty($recipient_name)) {
-                    api_response(false, "Nama Penerima wajib diisi untuk Barang Keluar.", null, 400);
-                }
-                
-                if (empty($recipient_address)) {
-                    api_response(false, "Alamat Penerima wajib diisi untuk Barang Keluar.", null, 400);
-                }
-                
-                // Cek stok item
-                $stmt_stock = $pdo->prepare("SELECT current_stock, is_approved, name FROM items WHERE id = ?");
-                $stmt_stock->execute([$item_id]);
-                $item = $stmt_stock->fetch();
-                
-                if (!$item) {
-                    api_response(false, "Item tidak ditemukan.", null, 404);
-                }
-                
-                if (!$item['is_approved']) {
-                    api_response(false, "Item '{$item['name']}' belum disetujui (APPROVED) dan tidak bisa dikeluarkan.", null, 403);
+                if (empty($recipient_name) || empty($recipient_address)) {
+                    api_response(false, "Nama dan Alamat Penerima wajib diisi untuk Barang Keluar.", null, 400);
                 }
                 
                 if ($quantity > $item['current_stock']) {
                     api_response(false, "Jumlah barang keluar ({$quantity}) melebihi stok tersedia ({$item['current_stock']}).", null, 400);
                 }
                 
-                // Generate Transaction Code
-                $prefix = 'BK';
-                $date_part = date('Ymd');
-                
-                $stmt_count = $pdo->prepare("SELECT COUNT(*) FROM transactions WHERE transaction_code LIKE ?");
-                $stmt_count->execute(["{$prefix}-{$date_part}%"]);
-                $count = $stmt_count->fetchColumn() + 1;
-                
-                $transaction_code = "{$prefix}-{$date_part}-" . str_pad($count, 3, '0', STR_PAD_LEFT);
-                
-                // Insert Transaksi
                 $sql = "INSERT INTO transactions 
                         (transaction_code, item_id, type, quantity, note, recipient_name, recipient_address, request_by_user_id, status) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')";
                 
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([
-                    $transaction_code, 
-                    $item_id, 
-                    $type, 
-                    $quantity, 
-                    $note, 
-                    $recipient_name, 
-                    $recipient_address, 
-                    $user_id
-                ]);
-                
-                api_response(true, "Permintaan Barang Keluar berhasil diajukan. Kode: {$transaction_code}. Status: PENDING menanti Supervisor.", ['code' => $transaction_code], 201);
+                $params = [$transaction_code, $item_id, $type, $quantity, $note, $recipient_name, $recipient_address, $user_id];
             }
+            
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            
+            api_response(true, "Permintaan {$prefix} berhasil diajukan. Kode: {$transaction_code}. Status: PENDING menanti Supervisor.", ['code' => $transaction_code], 201);
             
             break;
             
