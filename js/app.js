@@ -1,12 +1,117 @@
 /*
 |--------------------------------------------------------------------------
-| APLIKASI LOGIC (JS) - MIGRASI KE PHP SESSION/API
+| APLIKASI LOGIC (JS) - MIGRASI TOTAL KE API PHP (CRUD Lengkap)
 |--------------------------------------------------------------------------
-| Semua fungsi akses data lokal (localStorage) diganti dengan Fetch ke API PHP.
-| Data user kini dikelola oleh server PHP Session.
+| Mengintegrasikan API Auth, Suppliers, Recipients, Items, Transactions, dan Approval.
 */
 
-// ---------- Storage helpers (Untuk cache lokal) ----------
+// ---------- DOM & UI Helpers ----------
+
+// Mengganti alert/confirm dengan modal custom (Wajib untuk Immersive)
+function showMessageModal(title, message, is_confirm = false, on_confirm = null) {
+    // Buat modal element
+    let modal = document.getElementById('customModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'customModal';
+        modal.className = 'modal-backdrop';
+        modal.innerHTML = `
+            <div class="modal-content card">
+                <h3 id="modalTitle"></h3>
+                <p id="modalMessage"></p>
+                <div class="modal-actions">
+                    <button id="modalCancel" class="btn">Batal</button>
+                    <button id="modalConfirm" class="btn primary"></button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Tambahkan styling untuk modal (di-inline agar pasti terload)
+        const modalStyle = `
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex; /* Default to flex, hidden via JS */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 400px;
+            width: 90%;
+        }
+        .modal-actions {
+            margin-top: 20px;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        `;
+        const styleEl = document.createElement('style');
+        styleEl.textContent = modalStyle;
+        document.head.appendChild(styleEl);
+        modal.style.display = 'none'; // Sembunyikan secara default setelah styling dimuat
+    }
+    
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').innerHTML = message;
+    
+    const confirmBtn = document.getElementById('modalConfirm');
+    const cancelBtn = document.getElementById('modalCancel');
+
+    if (is_confirm) {
+        confirmBtn.style.display = 'inline-block';
+        confirmBtn.textContent = 'Ya, Lanjutkan';
+        confirmBtn.onclick = () => {
+            modal.style.display = 'none';
+            if (on_confirm) on_confirm();
+        };
+        cancelBtn.style.display = 'inline-block';
+        cancelBtn.onclick = () => modal.style.display = 'none';
+    } else {
+        confirmBtn.style.display = 'none';
+        cancelBtn.textContent = 'Tutup';
+        cancelBtn.onclick = () => modal.style.display = 'none';
+    }
+
+    modal.style.display = 'flex';
+}
+
+function showLoadingModal(message = "Memuat data...") {
+    // Implementasi Loading modal sederhana
+    let loading = document.getElementById('loadingModal');
+    if (!loading) {
+        loading = document.createElement('div');
+        loading.id = 'loadingModal';
+        loading.className = 'modal-backdrop';
+        loading.innerHTML = `
+            <div class="card" style="padding:15px; text-align:center;">
+                <p style="margin:0;"><span id="loadingMessage">${message}</span></p>
+            </div>
+        `;
+        document.body.appendChild(loading);
+    }
+    document.getElementById('loadingMessage').textContent = message;
+    loading.style.display = 'flex';
+}
+
+function hideLoadingModal() {
+    const loading = document.getElementById('loadingModal');
+    if (loading) loading.style.display = 'none';
+}
+
+
+// ---------- Storage helpers (Cache lokal untuk data master) ----------
 function storageGet(key){ 
     try { 
         return JSON.parse(localStorage.getItem(key)); 
@@ -19,10 +124,16 @@ function storageSet(key, val){
     localStorage.setItem(key, JSON.stringify(val)); 
 }
 
-// ---------- Auth helpers (Berinteraksi dengan PHP Session) ----------
+// Global cache untuk data master agar tidak sering fetch
+let masterDataCache = {
+    suppliers: [],
+    recipients: [],
+    items: []
+};
+
+// ---------- Auth helpers ----------
 
 function currentUser(){ 
-    // Ambil data user dari localStorage (hanya salinan/cache untuk rendering cepat)
     return storageGet('swims_current_user'); 
 }
 
@@ -39,6 +150,7 @@ function renderUserBar(){
 }
 
 function renderMenu(){
+    // Logika menu tetap sama
     const menu = document.getElementById('menuBar');
     const user = currentUser();
     menu.innerHTML = '';
@@ -56,56 +168,51 @@ function renderMenu(){
         buttons += `<button onclick="loadPage('staff')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('barang_masuk')">Barang Masuk</button>`;
         buttons += `<button onclick="loadPage('barang_keluar')">Barang Keluar</button>`;
-        buttons += `<button onclick="loadPage('request_item')">Request Barang Baru</button>`;
+        buttons += `<button onclick="loadPage('request_item')">Request Barang/Klien</button>`;
     }
     
     if (role === 'supervisor'){
         buttons += `<button onclick="loadPage('supervisor')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('approval')">Approval Transaksi</button>`;
-        buttons += `<button onclick="loadPage('approval_items')">Approval Barang Baru</button>`;
+        buttons += `<button onclick="loadPage('approval_items')">Approval Item/Klien</button>`;
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
     }
     
     if (role === 'admin'){
         buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('admin_users')">User Management</button>`;
+        buttons += `<button onclick="loadPage('manage_items')">Manage Item</button>`; 
     }
     
     if (role === 'owner'){
         buttons += `<button onclick="loadPage('owner')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
-        buttons += `<button onclick="loadPage('owner_report')">Monitoring</button>`;
+        buttons += `<button onclick="loadPage('owner_report')">Monitoring & Laporan</button>`;
     }
     
     buttons += `<button style="margin-left:auto" onclick="logout()">Logout</button>`;
     menu.innerHTML = buttons;
 }
 
-// Fungsi untuk memeriksa status session di server dan memperbarui tampilan
+// Fungsi untuk memeriksa status session di server
 async function checkSessionAndRender(){
     try {
         const response = await fetch('api/auth.php?action=check_session');
         const data = await response.json();
         
         if (data.logged_in) {
-            // Jika login, simpan data user ke cache lokal (localStorage) untuk rendering
             storageSet('swims_current_user', data.user); 
             
-            // Update UI
             renderUserBar();
             renderMenu();
             
-            // Cek apakah sedang di halaman login atau belum ada halaman
             const currentHash = window.location.hash.replace('#', '');
             if (!currentHash || currentHash === 'login') {
-                // Redirect ke dashboard sesuai role
                 loadPage(roleLanding(data.user.role));
             } else {
-                // Muat halaman yang ada di hash
                 loadPage(currentHash);
             }
         } else {
-            // Jika logout, bersihkan cache lokal dan pindah ke halaman login
             storageSet('swims_current_user', null);
             renderUserBar();
             renderMenu();
@@ -113,34 +220,39 @@ async function checkSessionAndRender(){
         }
     } catch (error) {
         console.error('Error checking session:', error);
-        // Fallback ke login jika ada error koneksi
         storageSet('swims_current_user', null);
         loadPage('login');
     }
 }
 
 // Fungsi Logout
-async function logout(){
-    if (!confirm('Apakah Anda yakin ingin logout?')) return;
-    
-    try {
-        const response = await fetch('api/auth.php?action=logout');
-        const data = await response.json();
-        if (data.success) {
-            alert('Logout Berhasil.');
-            storageSet('swims_current_user', null);
-            checkSessionAndRender(); // Bersihkan session dan pindah ke login
-        } else {
-            alert('Logout Gagal.');
+function logout(){
+    showMessageModal(
+        'Konfirmasi Logout', 
+        'Apakah Anda yakin ingin keluar dari SWIMS?', 
+        true, // is_confirm = true
+        async () => {
+            try {
+                const response = await fetch('api/auth.php?action=logout');
+                const data = await response.json();
+                if (data.success) {
+                    showMessageModal('Berhasil', 'Logout Berhasil.', false);
+                    storageSet('swims_current_user', null);
+                    checkSessionAndRender(); 
+                } else {
+                    showMessageModal('Gagal', 'Logout Gagal.', false);
+                }
+            } catch (error) {
+                showMessageModal('Error', 'Error saat logout. Silakan coba lagi.', false);
+                console.error('Logout error:', error);
+            }
         }
-    } catch (error) {
-        console.error('Error saat logout:', error);
-        alert('Error saat logout. Silakan coba lagi.');
-    }
+    );
 }
 
-// ---------- Page Access Control ----------
+// ---------- Page Access Control & Loading ----------
 const ROLE_ALLOWED_PAGES = {
+    // ... (tetap sama)
     'login': ['guest','staff','supervisor','admin','owner'],
     'staff': ['staff'],
     'barang_masuk': ['staff'],
@@ -151,6 +263,7 @@ const ROLE_ALLOWED_PAGES = {
     'approval_items': ['supervisor'],
     'admin': ['admin'],
     'admin_users': ['admin'],
+    'manage_items': ['admin'], 
     'owner': ['owner'],
     'owner_report': ['owner'],
     'notes': ['supervisor','owner']
@@ -165,10 +278,8 @@ function roleLanding(role){
 }
 
 function loadPage(page){
-    // Update hash URL
     window.location.hash = page;
     
-    // Load halaman
     fetch(`pages/${page}.php`) 
       .then(r => {
         if (!r.ok) throw new Error(`Halaman pages/${page}.php tidak ditemukan atau akses ditolak (403/404).`);
@@ -177,7 +288,6 @@ function loadPage(page){
       .then(html => {
         document.getElementById('content').innerHTML = html;
         
-        // Panggil init function jika ada
         if (typeof window['init_'+page] === 'function') {
             window['init_'+page]();
         }
@@ -194,10 +304,53 @@ function loadPage(page){
       });
 }
 
-// ---------- Page init functions ----------
+// ---------- API Master Data Loader ----------
 
-/* init_login - Logic Login Form AJAX */
+async function loadMasterData() {
+    showLoadingModal('Mengambil data master (Supplier & Item)...');
+    try {
+        const [supplierRes, recipientRes, itemRes] = await Promise.all([
+            fetch('api/suppliers.php?action=list'),
+            fetch('api/recipients.php'),
+            fetch('api/items.php?action=available') // Hanya item yang sudah disetujui
+        ]);
+
+        const supplierData = await supplierRes.json();
+        const recipientData = await recipientRes.json();
+        const itemData = await itemRes.json();
+
+        if (supplierData.success) {
+            masterDataCache.suppliers = supplierData.data;
+        } else {
+            console.error('Gagal memuat supplier:', supplierData.message);
+        }
+        
+        if (recipientData.success) {
+            masterDataCache.recipients = recipientData.data;
+        } else {
+            console.error('Gagal memuat penerima:', recipientData.message);
+        }
+
+        if (itemData.success) {
+            masterDataCache.items = itemData.data;
+        } else {
+            console.error('Gagal memuat item:', itemData.message);
+        }
+
+    } catch (error) {
+        console.error('Error saat memuat Master Data:', error);
+        showMessageModal('Error Jaringan', 'Gagal memuat data master dari server. Pastikan WAMP/XAMPP berjalan.', false);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
+
+// ---------- Page init functions (Diintegrasikan dengan API) ----------
+
+/* init_login - Logic Login Form AJAX (Tidak Berubah) */
 function init_login(){ 
+    // Logika ini tetap sama, memanggil api/auth.php POST
     const form = document.getElementById('formLogin');
     const msg = document.getElementById('loginMessage');
     if (!form) return;
@@ -211,7 +364,6 @@ function init_login(){
         const password = document.getElementById('login_password').value;
         const role = document.getElementById('login_role').value;
         
-        // Validasi input
         if (!username || !password || !role) {
             msg.textContent = 'Semua field harus diisi!';
             msg.style.color = '#ef4444';
@@ -226,27 +378,16 @@ function init_login(){
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                // Login berhasil!
                 msg.textContent = '✅ Login berhasil! Redirecting...';
                 msg.style.color = '#16a34a';
                 
-                console.log('Login success as:', data.role);
+                storageSet('swims_current_user', { username: username, role: data.role });
                 
-                // Simpan data user ke localStorage (cache)
-                storageSet('swims_current_user', {
-                    username: username,
-                    role: data.role
-                });
-                
-                // Update UI
                 renderUserBar();
                 renderMenu();
                 
-                // REDIRECT KE DASHBOARD SESUAI ROLE
                 setTimeout(() => {
-                    const targetPage = roleLanding(data.role);
-                    console.log('Redirecting to:', targetPage);
-                    loadPage(targetPage);
+                    loadPage(roleLanding(data.role));
                 }, 800);
                 
             } else {
@@ -264,37 +405,123 @@ function init_login(){
 
 /* init_staff - Dashboard Staff */
 function init_staff(){
-    console.log('Staff dashboard loaded');
+    // Memuat data master saat Staff dashboard dimuat
+    loadMasterData();
+    console.log('Staff dashboard loaded, master data cached.');
+    // TODO: Tambahkan fetch untuk statistik dashboard di sini
 }
 
 /* init_supervisor - Dashboard Supervisor */
 function init_supervisor(){
-    console.log('Supervisor dashboard loaded');
+    // TODO: Tambahkan fetch untuk statistik dashboard Supervisor di sini
+    console.log('Supervisor dashboard loaded.');
 }
 
 /* init_admin - Dashboard Admin */
 function init_admin(){
-    console.log('Admin dashboard loaded');
+    // TODO: Tambahkan fetch untuk statistik dashboard Admin di sini
+    console.log('Admin dashboard loaded.');
 }
 
 /* init_owner - Dashboard Owner */
 function init_owner(){
-    console.log('Owner dashboard loaded');
+    // TODO: Tambahkan fetch untuk statistik dashboard Owner di sini
+    console.log('Owner dashboard loaded.');
 }
+
+/**
+ * Helper untuk form submission transaksi (IN/OUT)
+ * @param {string} type 'IN' atau 'OUT'
+ * @param {HTMLFormElement} form Element form yang disubmit
+ * @param {string} masterSelectId ID dari select Item
+ * @param {string} masterIdSelectId ID dari select Supplier/Recipient
+ */
+async function handleTransactionSubmit(type, form, itemSelectId, masterIdSelectId) {
+    const item_id = document.getElementById(itemSelectId).value;
+    const quantity = parseInt(document.getElementById(type === 'IN' ? 'bm_qty' : 'bk_qty').value);
+    const note = document.getElementById(type === 'IN' ? 'bm_note' : 'bk_note').value;
+    const master_id = document.getElementById(masterIdSelectId).value;
+
+    if (!item_id || !master_id || quantity <= 0) {
+        showMessageModal('Validasi Gagal', 'Semua field Item, Supplier/Penerima, dan Jumlah harus diisi dengan benar.', false);
+        return;
+    }
+    
+    showLoadingModal(`Mengajukan Permintaan ${type}...`);
+
+    try {
+        const response = await fetch('api/transactions.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                type: type,
+                item_id: item_id,
+                quantity: quantity,
+                note: note,
+                master_id: master_id
+            })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            showMessageModal('✅ Sukses!', data.message + `<br>Kode Transaksi: <b>${data.data.code}</b>`, false);
+            form.reset();
+            // Muat ulang master data untuk update stok di form Barang Keluar
+            if (type === 'OUT') {
+                loadMasterData();
+            }
+        } else {
+            showMessageModal('❌ Gagal!', data.message, false);
+        }
+    } catch (error) {
+        showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi.', false);
+        console.error('Transaction submit error:', error);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
 
 /* init_barang_masuk - Form Barang Masuk */
 function init_barang_masuk(){
     const form = document.getElementById('formBarangMasuk');
     if (!form) return;
     
-    // TODO: Load items ke dropdown
     const itemSelect = document.getElementById('bm_item');
-    itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
     
+    // Pastikan elemen select untuk Supplier sudah ada (atau buat)
+    let supplierSelect = document.getElementById('bm_supplier_id');
+    if (!supplierSelect) {
+        supplierSelect = document.createElement('select');
+        supplierSelect.id = 'bm_supplier_id';
+        supplierSelect.required = true;
+
+        // Cari label untuk bm_item dan sisipkan elemen Supplier di atasnya
+        const itemLabel = form.querySelector('label[for="bm_item"]');
+        if (itemLabel) {
+            itemLabel.before(supplierSelect);
+            const labelEl = document.createElement('label');
+            labelEl.textContent = 'Pilih Supplier (Klien)';
+            supplierSelect.before(labelEl);
+        }
+    }
+    
+    // Isi Dropdown Item dan Supplier
+    itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
+    supplierSelect.innerHTML = '<option value="">-- Pilih Supplier --</option>';
+
+    masterDataCache.suppliers.forEach(s => {
+        supplierSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
+    });
+
+    masterDataCache.items.forEach(i => {
+        itemSelect.innerHTML += `<option value="${i.id}">${i.sku} - ${i.name} (${i.unit})</option>`;
+    });
+
     form.onsubmit = function(e){
         e.preventDefault();
-        alert('Fitur Barang Masuk sedang dalam pengembangan. Data akan dikirim ke API PHP.');
-        // TODO: Kirim data ke API
+        handleTransactionSubmit('IN', form, 'bm_item', 'bm_supplier_id');
     };
 }
 
@@ -303,52 +530,295 @@ function init_barang_keluar(){
     const form = document.getElementById('formBarangKeluar');
     if (!form) return;
     
-    // TODO: Load items ke dropdown
     const itemSelect = document.getElementById('bk_item');
+
+    // Pastikan elemen select untuk Penerima sudah ada (atau buat)
+    let recipientSelect = document.getElementById('bk_recipient_id'); 
+    if (!recipientSelect) {
+        recipientSelect = document.createElement('select');
+        recipientSelect.id = 'bk_recipient_id';
+        recipientSelect.required = true;
+
+        // Cari label untuk bk_item dan sisipkan elemen Penerima di atasnya
+        const itemLabel = form.querySelector('label[for="bk_item"]');
+        if (itemLabel) {
+            itemLabel.before(recipientSelect);
+            const labelEl = document.createElement('label');
+            labelEl.textContent = 'Pilih Penerima';
+            recipientSelect.before(labelEl);
+        }
+    }
+    
+    // Isi Dropdown Item dan Penerima
     itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
+    recipientSelect.innerHTML = '<option value="">-- Pilih Penerima --</option>';
+
+    masterDataCache.recipients.forEach(r => {
+        recipientSelect.innerHTML += `<option value="${r.id}">${r.name} (${r.type})</option>`;
+    });
+
+    masterDataCache.items.forEach(i => {
+        itemSelect.innerHTML += `<option value="${i.id}">${i.sku} - ${i.name} (Stok: ${i.current_stock})</option>`;
+    });
     
     form.onsubmit = function(e){
         e.preventDefault();
-        alert('Fitur Barang Keluar sedang dalam pengembangan. Data akan dikirim ke API PHP.');
-        // TODO: Kirim data ke API
+        handleTransactionSubmit('OUT', form, 'bk_item', 'bk_recipient_id');
     };
 }
 
-/* init_approval - Approval Transaksi */
-function init_approval(){
-    console.log('Approval page loaded');
-    // TODO: Load pending transactions
+
+/**
+ * Mengambil data pending dan merender tabel di halaman Approval.
+ * @param {string} action 'transactions', 'items', atau 'suppliers'
+ */
+async function loadApprovalData(action) {
+    // Tentukan ID div target
+    const listDiv = document.getElementById(
+        action === 'transactions' ? 'approvalList' : 'approvalItemsList'
+    );
+    if (!listDiv) return;
+
+    listDiv.innerHTML = '<div class="card"><p>Memuat data...</p></div>';
+    showLoadingModal('Mengambil daftar PENDING...');
+
+    try {
+        const response = await fetch(`api/approval.php?action=${action}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+            listDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message}</p></div>`;
+            return;
+        }
+
+        if (data.data.length === 0) {
+            listDiv.innerHTML = '<div class="card"><h3 style="color:var(--success);">✅ Tidak ada permintaan PENDING saat ini.</h3></div>';
+            return;
+        }
+
+        let tableHtml = '<div class="card"><h2>Daftar Permintaan PENDING</h2><table class="table"><thead><tr>';
+        
+        if (action === 'transactions') {
+            // Header untuk Approval Transaksi
+            tableHtml += '<th>ID</th><th>Tipe</th><th>Item (SKU)</th><th>Kuantitas</th><th>Klien/Penerima</th><th>Requester</th><th>Aksi</th>';
+            tableHtml += '</tr></thead><tbody>';
+            data.data.forEach(t => {
+                const badgeClass = t.type === 'IN' ? 'badge-in' : 'badge-out';
+                const masterName = t.type === 'IN' ? t.supplier_name : t.recipient_name;
+                
+                tableHtml += `
+                    <tr>
+                        <td>${t.transaction_code}</td>
+                        <td><span class="badge ${badgeClass}">${t.type}</span></td>
+                        <td>${t.item_name} (${t.sku})</td>
+                        <td>${t.quantity} ${t.unit}</td>
+                        <td>${masterName}</td>
+                        <td>${t.requester_name}</td>
+                        <td>
+                            <button class="btn success btn-sm" onclick="handleApprovalAction('approve_transaction', ${t.id}, 'transactions')">Approve</button>
+                            <button class="btn danger btn-sm" onclick="handleApprovalAction('reject_transaction', ${t.id}, 'transactions')">Reject</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else if (action === 'items') {
+             // Header untuk Approval Item Baru
+            tableHtml += '<th>ID</th><th>Item (SKU)</th><th>Klien Pemilik</th><th>Unit</th><th>Diajukan Oleh</th><th>Aksi</th>';
+            tableHtml += '</tr></thead><tbody>';
+            data.data.forEach(i => {
+                 tableHtml += `
+                    <tr>
+                        <td>${i.id}</td>
+                        <td>${i.name} (${i.sku})</td>
+                        <td>${i.supplier_name}</td>
+                        <td>${i.unit}</td>
+                        <td>${i.requester_name}</td>
+                        <td>
+                            <button class="btn success btn-sm" onclick="handleApprovalAction('approve_item', ${i.id}, 'items')">Setujui Item</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else if (action === 'suppliers') {
+            // Header untuk Approval Supplier Baru
+            tableHtml += '<th>ID</th><th>Nama Klien/PT</th><th>Kontak Person</th><th>Telepon</th><th>Diajukan Oleh</th><th>Aksi</th>';
+            tableHtml += '</tr></thead><tbody>';
+            data.data.forEach(s => {
+                 tableHtml += `
+                    <tr>
+                        <td>${s.id}</td>
+                        <td>${s.name}</td>
+                        <td>${s.contact_person ?? '-'}</td>
+                        <td>${s.phone ?? '-'}</td>
+                        <td>${s.requester_name}</td>
+                        <td>
+                            <button class="btn success btn-sm" onclick="handleApprovalAction('approve_supplier', ${s.id}, 'suppliers')">Setujui Klien</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        tableHtml += '</tbody></table></div>';
+        listDiv.innerHTML = tableHtml;
+
+    } catch (error) {
+        listDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error saat memuat data: ${error.message}</p></div>`;
+        console.error('Approval load error:', error);
+    } finally {
+        hideLoadingModal();
+    }
 }
 
-/* init_approval_items - Approval Item Baru */
-function init_approval_items(){
-    console.log('Approval items page loaded');
-    // TODO: Load pending items
+/**
+ * Mengirim aksi Approval ke API
+ * @param {string} action 'approve_transaction', 'reject_transaction', 'approve_item', atau 'approve_supplier'
+ * @param {number} id ID Transaksi, Item, atau Supplier
+ * @param {string} typeOfList Tipe daftar yang perlu dimuat ulang ('transactions', 'items', 'suppliers')
+ */
+function handleApprovalAction(action, id, typeOfList) {
+    let confirmationMessage;
+    if (action === 'approve_transaction') {
+        confirmationMessage = 'Apakah Anda yakin ingin MENYETUJUI transaksi ini? Stok akan berubah secara permanen.';
+    } else if (action === 'reject_transaction') {
+        confirmationMessage = 'Apakah Anda yakin ingin MENOLAK transaksi ini? Status akan berubah menjadi REJECTED.';
+    } else if (action === 'approve_item') {
+        confirmationMessage = 'Apakah Anda yakin ingin MENYETUJUI Item baru ini? Item akan aktif untuk transaksi IN/OUT.';
+    } else if (action === 'approve_supplier') {
+        confirmationMessage = 'Apakah Anda yakin ingin MENYETUJUI Klien/Supplier baru ini? Klien akan aktif dan bisa digunakan.';
+    }
+
+    showMessageModal('Konfirmasi Aksi', confirmationMessage, true, async () => {
+        showLoadingModal('Memproses aksi...');
+        try {
+            const response = await fetch('api/approval.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: action, id: id })
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessageModal('✅ Sukses!', data.message, false);
+                // Muat ulang data setelah sukses
+                if (typeOfList === 'suppliers' || typeOfList === 'items') {
+                    // Karena approval items dan suppliers ada di halaman yang sama, muat ulang keduanya.
+                    loadMasterData(); // Muat ulang master data untuk update dropdown
+                    renderItemApprovalContent(typeOfList, document.querySelector(`#itemApprovalTabs button[onclick*="'${typeOfList}'"]`));
+                } else {
+                    loadApprovalData(typeOfList);
+                }
+            } else {
+                showMessageModal('❌ Gagal!', data.message, false);
+            }
+        } catch (error) {
+            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Approval.', false);
+            console.error('Approval action error:', error);
+        } finally {
+            hideLoadingModal();
+        }
+    });
 }
+
+
+/* init_approval - Approval Transaksi */
+function init_approval(){
+    loadApprovalData('transactions');
+}
+
+/**
+ * Helper untuk memuat kedua daftar approval (Item dan Supplier) di halaman approval_items.php
+ */
+function loadApprovalItemsPage() {
+    loadApprovalData('items'); // Memuat Item Baru
+    loadApprovalData('suppliers'); // Memuat Supplier Baru
+}
+
+/* init_approval_items - Approval Item/Supplier Baru */
+function init_approval_items(){
+    // Tambahkan tab navigasi ke halaman approval_items.php
+    const content = document.getElementById('content');
+    
+    // Periksa apakah halaman sudah di-override (untuk mencegah double render)
+    if (!document.getElementById('itemApprovalTabs')) {
+         content.innerHTML = `
+            <div class="card">
+                <h2>✅ Approval Item & Klien Baru</h2>
+                <p class="small">Supervisor menyetujui Item dan Klien yang diajukan Staff agar dapat digunakan dalam transaksi.</p>
+            </div>
+            <div class="menu" id="itemApprovalTabs">
+                <button class="btn primary" onclick="renderItemApprovalContent('items', this)">Permintaan Item Baru</button>
+                <button class="btn" onclick="renderItemApprovalContent('suppliers', this)">Permintaan Klien/Supplier Baru</button>
+            </div>
+            <div id="approvalItemsList"></div>
+        `;
+    }
+
+    // Render konten awal
+    renderItemApprovalContent('items', document.querySelector('#itemApprovalTabs button:first-child'));
+}
+
+/**
+ * Merender konten spesifik di halaman approval_items.php
+ */
+function renderItemApprovalContent(type, element) {
+    const tabs = document.getElementById('itemApprovalTabs').querySelectorAll('button');
+    tabs.forEach(btn => btn.className = 'btn');
+    element.className = 'btn primary';
+
+    // Panggil fungsi pemuatan data dengan tipe yang diminta
+    loadApprovalData(type);
+}
+
 
 /* init_admin_users - User Management */
 function init_admin_users(){
-    console.log('Admin users page loaded');
-    // TODO: Load user list
+    // Logika CRUD user sudah ada di pages/admin_users.php script
+    // Fungsi loadUserList (di dalam pages/admin_users.php) akan dipanggil
+    if(typeof loadUserList === 'function') {
+        loadUserList();
+    }
 }
 
 /* init_notes - Notes Page */
 function init_notes(){
     console.log('Notes page loaded');
-    // TODO: Load notes
+    // TODO: Implementasi CRUD Notes
 }
 
 /* init_owner_report - Owner Report */
 function init_owner_report(){
-    console.log('Owner report page loaded');
-    // TODO: Load reports
+    // Logika Laporan sudah ada di pages/owner_report.php script
+    // Memastikan tab summary aktif saat dimuat
+    if(document.getElementById('reportTabs')) {
+        document.getElementById('reportTabs').querySelector('button:first-child').className = 'btn primary';
+        if(typeof renderReport === 'function') {
+            renderReport('summary');
+        }
+    }
 }
 
 /* init_request_item - Request Item Baru */
 function init_request_item(){
-    console.log('Request item page loaded');
-    // TODO: Form request item baru
+    // Logika request item sudah ada di pages/request_item.php script
+    loadMasterData().then(() => {
+        // Tampilkan form Item Baru secara default
+        if(typeof showRequestForm === 'function') {
+            showRequestForm('item', document.querySelector('#requestTabs button:first-child'));
+        }
+    });
 }
+
+/* init_manage_items - Admin Manage Items */
+function init_manage_items(){
+    // Logika CRUD Item sudah ada di pages/manage_items.php script
+    // Fungsi loadItemList (di dalam pages/manage_items.php) akan dipanggil
+    if(typeof loadItemList === 'function') {
+        loadItemList();
+    }
+}
+
 
 // ---------- Expose to global scope ----------
 window.loadPage = loadPage;
@@ -360,6 +830,9 @@ window.checkSessionAndRender = checkSessionAndRender;
 window.roleLanding = roleLanding;
 window.storageGet = storageGet;
 window.storageSet = storageSet;
+window.showMessageModal = showMessageModal; 
+window.handleApprovalAction = handleApprovalAction;
+window.loadMasterData = loadMasterData;
 
 // Expose init functions
 window.init_login = init_login;
@@ -375,6 +848,9 @@ window.init_admin_users = init_admin_users;
 window.init_notes = init_notes;
 window.init_owner_report = init_owner_report;
 window.init_request_item = init_request_item;
+window.init_manage_items = init_manage_items;
+window.loadApprovalItemsPage = loadApprovalItemsPage;
+window.renderItemApprovalContent = renderItemApprovalContent;
 
 // Log untuk debugging
-console.log('SWIMS App JS Loaded ✅');
+console.log('SWIMS App JS Loaded and API Ready ✅');

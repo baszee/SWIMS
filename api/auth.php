@@ -2,7 +2,7 @@
 // FILE: api/auth.php
 // Fungsi: Menangani semua proses autentikasi (Login, Logout, Cek Session)
 session_start();
-include('../includes/db_config.php'); // Pastikan path ini benar!
+include('../config/db_config.php'); // Path baru
 
 header('Content-Type: application/json');
 
