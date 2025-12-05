@@ -39,7 +39,7 @@ try {
     switch ($method) {
         // READ: Mengambil daftar Transaksi PENDING (untuk halaman approval.php)
         case 'GET':
-            $action = $_GET['action'] ?? 'transactions'; // Bisa 'transactions' atau 'items'
+            $action = $_GET['action'] ?? 'transactions'; // Bisa 'transactions', 'items', atau 'suppliers'
             
             if ($action === 'transactions') {
                 // Ambil semua transaksi yang masih PENDING (JOIN untuk nama item, user, supplier/recipient)
@@ -79,13 +79,29 @@ try {
                 $stmt = $pdo->query($sql);
                 $pending_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar Item Baru PENDING berhasil diambil.", $pending_items);
+
+            } elseif ($action === 'suppliers') {
+                 // Ambil Supplier Baru yang masih belum disetujui (is_active = FALSE)
+                 $sql = "
+                    SELECT 
+                        s.id, s.name, s.contact_person, s.phone, s.address, 
+                        u.username AS requester_name,
+                        s.created_at
+                    FROM suppliers s
+                    JOIN users u ON s.created_by_user_id = u.id
+                    WHERE s.is_active = FALSE
+                    ORDER BY s.created_at ASC
+                ";
+                $stmt = $pdo->query($sql);
+                $pending_suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                api_response(true, "Daftar Supplier Baru PENDING berhasil diambil.", $pending_suppliers);
             }
             break;
 
         // UPDATE/AKSI: Mengeksekusi Approval/Rejection
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
-            $action = $data['action'] ?? ''; // 'approve_transaction', 'reject_transaction', 'approve_item'
+            $action = $data['action'] ?? ''; // 'approve_transaction', 'reject_transaction', 'approve_item', 'approve_supplier'
             $id = $data['id'] ?? null;
 
             if (!$id || empty($action)) {
@@ -163,6 +179,21 @@ try {
                     api_response(true, "Item ID:{$id} berhasil disetujui dan siap digunakan dalam transaksi.", null);
                 } else {
                     api_response(false, "Item tidak ditemukan atau sudah disetujui sebelumnya.", null, 404);
+                }
+            }
+
+            // ----------------------------------------------------------------------
+            // C. APPROVE SUPPLIER BARU (KODE YANG HILANG)
+            // ----------------------------------------------------------------------
+            elseif ($action === 'approve_supplier') {
+                // Update is_active = TRUE pada tabel suppliers
+                $stmt = $pdo->prepare("UPDATE suppliers SET is_active = TRUE WHERE id = ? AND is_active = FALSE");
+                $stmt->execute([$id]);
+                
+                if ($stmt->rowCount() > 0) {
+                    api_response(true, "Supplier ID:{$id} berhasil disetujui dan siap digunakan.", null);
+                } else {
+                    api_response(false, "Supplier tidak ditemukan atau sudah disetujui sebelumnya.", null, 404);
                 }
             }
             break;

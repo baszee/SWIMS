@@ -2,7 +2,8 @@
 // FILE: api/auth.php
 // Fungsi: Menangani semua proses autentikasi (Login, Logout, Cek Session)
 session_start();
-include('../config/db_config.php'); // Path baru
+// PERBAIKAN: Memastikan path ke config/db_config.php sudah benar
+include('../config/db_config.php'); 
 
 header('Content-Type: application/json');
 
@@ -26,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user) {
             // KEAMANAN TINGGI: Verifikasi Password dengan Hash yang tersimpan di DB
-            // Password default di DB: 123456
+            // Catatan: Jika ini gagal, cek hash di database dengan generate_hash.php
             if (password_verify($password, $user['password'])) {
                 
                 // Login Sukses: Simpan data user ke PHP SESSION
@@ -45,10 +46,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              echo json_encode(['success' => false, 'message' => 'User tidak ditemukan dengan role tersebut.']);
         }
     } catch (\PDOException $e) {
-        // Jangan tampilkan detail error database ke publik
+        // Tampilkan error umum ke pengguna, log error detail ke server
         error_log("Database Error in login: " . $e->getMessage());
         http_response_code(500);
-        exit(json_encode(['success' => false, 'message' => 'Kesalahan server.']));
+        exit(json_encode(['success' => false, 'message' => 'Kesalahan server. Koneksi database gagal.']));
     }
 } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET['action'] ?? '';
