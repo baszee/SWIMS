@@ -42,17 +42,38 @@ try {
     switch ($method) {
         // READ: Mengambil daftar Supplier
         case 'GET':
-            // Jika ada query 'list', ini digunakan untuk mengisi dropdown Staff. Hanya ambil yang aktif/approved
+            // ---------------------------------------------------
+            // Endpoint 1: Riwayat Request Staff Sendiri (action=my_requests)
+            // ---------------------------------------------------
+            if (isset($_GET['action']) && $_GET['action'] === 'my_requests') {
+                // Hanya Staff yang boleh melihat requestnya sendiri
+                if ($user_role !== 'staff') {
+                    api_response(false, "Akses hanya untuk Staff.", null, 403);
+                }
+                
+                // Ambil request supplier berdasarkan user_id yang sedang login
+                $sql = "SELECT id, name, is_active, created_at FROM suppliers WHERE created_by_user_id = ? ORDER BY created_at DESC";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$user_id]);
+                $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                api_response(true, "Riwayat request supplier berhasil diambil.", $requests);
+            }
+            // ---------------------------------------------------
+
+            // Endpoint 2: Daftar Supplier Aktif (action=list) - untuk dropdown
             if (isset($_GET['action']) && $_GET['action'] === 'list') {
                 $stmt = $pdo->query("SELECT id, name FROM suppliers WHERE is_active = TRUE ORDER BY name ASC");
                 $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar supplier berhasil diambil.", $suppliers);
             }
             
-            // Jika GET umum, tampilkan semua data (untuk manajemen di Admin/Supervisor)
+            // Endpoint 3: GET umum (tanpa action) - tampilkan semua data
             $stmt = $pdo->query("SELECT * FROM suppliers ORDER BY name ASC");
             $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
             api_response(true, "Data supplier berhasil diambil.", $suppliers);
+            
+            break; 
 
         // CREATE: Menambah Supplier baru
         case 'POST':
@@ -72,8 +93,7 @@ try {
             }
             
             // Logika Persetujuan Otomatis:
-            // Jika Admin yang membuat, langsung APPROVED (TRUE).
-            // Jika Staff yang membuat (melalui Request Item), statusnya PENDING (FALSE).
+            // Jika Admin, langsung TRUE. Jika Staff, PENDING (FALSE).
             $is_active_status = ($user_role === 'admin') ? TRUE : FALSE;
             $response_message = ($user_role === 'admin') ? "Supplier '{$name}' berhasil ditambahkan dan langsung disetujui." : "Permintaan Supplier '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
 

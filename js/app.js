@@ -403,13 +403,73 @@ function init_login(){
     };
 }
 
-/* init_staff - Dashboard Staff */
+/* init_staff - Dashboard Staff (REVISI) */
 function init_staff(){
     // Memuat data master saat Staff dashboard dimuat
-    loadMasterData();
-    console.log('Staff dashboard loaded, master data cached.');
-    // TODO: Tambahkan fetch untuk statistik dashboard di sini
+    loadMasterData().then(loadStaffDashboard);
 }
+
+// Fungsi baru untuk memuat statistik dashboard Staff
+async function loadStaffDashboard() {
+    const statsDiv = document.getElementById('staffStats');
+    const welcomeDiv = document.getElementById('staffWelcome');
+    const user = currentUser();
+    
+    // Pastikan DOM elements ada
+    if (!statsDiv) return;
+
+    // Tambahkan welcome div jika belum ada (dari pages/staff.php)
+    if (!welcomeDiv) {
+        const panel = document.getElementById('staffPanel');
+        if (panel) {
+            panel.innerHTML = `<div id="staffWelcome"></div>`;
+        }
+    }
+    
+    document.getElementById('staffWelcome').innerHTML = `Selamat datang, <b>${user.username}</b>. Gunakan menu untuk mengelola barang.`;
+    statsDiv.innerHTML = '';
+    showLoadingModal('Mengambil statistik Staff...');
+
+    try {
+        // Memanggil endpoint baru
+        const response = await fetch('api/report.php?action=staff_summary');
+        const data = await response.json();
+        
+        if (!data.success) {
+            statsDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message}</p></div>`;
+            return;
+        }
+
+        const stats = data.data;
+
+        // Rendering 4 Kartu Statistik (sesuai referensi image_dea0be.png)
+        statsDiv.innerHTML = `
+            <div class="stat-box" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="stat-label">Total Jenis Barang (Approved)</div>
+                <div class="stat-value">${stats.total_items.toLocaleString()}</div>
+            </div>
+            <div class="stat-box warn" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <div class="stat-label">Pending Masuk</div>
+                <div class="stat-value">${stats.pending_in}</div>
+            </div>
+            <div class="stat-box warn" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <div class="stat-label">Pending Keluar</div>
+                <div class="stat-value">${stats.pending_out}</div>
+            </div>
+            <div class="stat-box danger" style="background:linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                <div class="stat-label">Pending Barang/Klien Baru</div>
+                <div class="stat-value">${stats.pending_new_masters}</div>
+            </div>
+        `;
+        
+    } catch (error) {
+        statsDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error Jaringan: Gagal mengambil data dashboard.</p></div>`;
+        console.error('Staff Dashboard load error:', error);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
 
 /* init_supervisor - Dashboard Supervisor */
 function init_supervisor(){
@@ -425,8 +485,10 @@ function init_admin(){
 
 /* init_owner - Dashboard Owner */
 function init_owner(){
-    // TODO: Tambahkan fetch untuk statistik dashboard Owner di sini
-    console.log('Owner dashboard loaded.');
+    // Logika Owner Dashboard sudah disiapkan di pages/owner.php
+    if(typeof loadOwnerDashboard === 'function') {
+        loadOwnerDashboard();
+    }
 }
 
 /**
@@ -833,6 +895,7 @@ window.storageSet = storageSet;
 window.showMessageModal = showMessageModal; 
 window.handleApprovalAction = handleApprovalAction;
 window.loadMasterData = loadMasterData;
+window.loadStaffDashboard = loadStaffDashboard; // Expose fungsi baru
 
 // Expose init functions
 window.init_login = init_login;
