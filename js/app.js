@@ -56,6 +56,31 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
             justify-content: flex-end;
             gap: 8px;
         }
+        /* Styling untuk Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            background: var(--card);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            margin-top: 2px;
+            border-radius: 6px;
+        }
+        .autocomplete-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+        }
+        .autocomplete-item:hover {
+            background: #f1f5f9;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
         `;
         const styleEl = document.createElement('style');
         styleEl.textContent = modalStyle;
@@ -168,7 +193,7 @@ function renderMenu(){
         buttons += `<button onclick="loadPage('staff')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('barang_masuk')">Barang Masuk</button>`;
         buttons += `<button onclick="loadPage('barang_keluar')">Barang Keluar</button>`;
-        buttons += `<button onclick="loadPage('request_item')">Request Barang/Klien</button>`;
+        buttons += `<button onclick="loadPage('request_item')">Request Klien/Supplier</button>`;
     }
     
     if (role === 'supervisor'){
@@ -345,6 +370,86 @@ async function loadMasterData() {
     }
 }
 
+// ---------- Helper Functions for Staff Forms (New in Step 4) ----------
+
+/**
+ * Helper untuk merender riwayat transaksi Staff (IN/OUT)
+ * @param {string} type 'IN' atau 'OUT'
+ * @param {string} targetDivId ID dari div tempat tabel akan dirender
+ */
+async function renderStaffHistory(type, targetDivId) {
+    const historyDiv = document.getElementById(targetDivId);
+    if (!historyDiv) return;
+
+    historyDiv.innerHTML = '<p>Memuat riwayat...</p>';
+    
+    try {
+        // Menggunakan endpoint my_history di api/transactions.php
+        const response = await fetch(`api/transactions.php?action=my_history&type=${type}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            historyDiv.innerHTML = `<p class="small" style="color:var(--danger);">Gagal memuat riwayat: ${data.message}</p>`;
+            return;
+        }
+
+        if (data.data.length === 0) {
+            historyDiv.innerHTML = `<p>Anda belum memiliki riwayat transaksi ${type} terbaru.</p>`;
+            return;
+        }
+
+        let tableHtml = '<table class="table"><thead><tr>';
+        tableHtml += '<th>Kode Trans</th><th>Item (SKU)</th><th>Qty</th><th>Status</th><th>Approver</th><th>Tanggal</th></tr></thead><tbody>';
+        
+        data.data.forEach(t => {
+            let statusBadge;
+            if (t.status === 'APPROVED') {
+                statusBadge = '<span class="badge badge-success">APPROVED</span>';
+            } else if (t.status === 'REJECTED') {
+                statusBadge = '<span class="badge badge-danger">REJECTED</span>';
+            } else {
+                statusBadge = '<span class="badge badge-warning">PENDING</span>';
+            }
+            
+            tableHtml += `
+                <tr>
+                    <td>${t.transaction_code}</td>
+                    <td>${t.item_name} (${t.sku})</td>
+                    <td>${t.quantity} ${t.unit}</td>
+                    <td>${statusBadge}</td>
+                    <td>${t.approver_name ?? '-'}</td>
+                    <td>${t.request_date.substring(0, 10)}</td>
+                </tr>
+            `;
+        });
+
+        historyDiv.innerHTML = tableHtml + '</tbody></table>';
+
+    } catch (error) {
+        historyDiv.innerHTML = `<p class="small" style="color:var(--danger);">Error saat memuat riwayat: ${error.message}</p>`;
+        console.error('Staff history load error:', error);
+    }
+}
+
+/**
+ * Helper untuk mencari item (Autocomplete)
+ * @param {number} supplierId ID Supplier yang dipilih
+ * @param {string} query Kata kunci pencarian
+ * @returns {Promise<Object[]>} Array hasil item
+ */
+async function autocompleteItem(supplierId, query) {
+    if (!supplierId || query.length < 2) return [];
+
+    try {
+        const response = await fetch(`api/items.php?action=search&supplier_id=${supplierId}&q=${query}`);
+        const data = await response.json();
+        return data.success ? data.data : [];
+    } catch (error) {
+        console.error('Autocomplete API failed:', error);
+        return [];
+    }
+}
+
 
 // ---------- Page init functions (Diintegrasikan dengan API) ----------
 
@@ -403,35 +508,24 @@ function init_login(){
     };
 }
 
-/* init_staff - Dashboard Staff (REVISI) */
+/* init_staff - Dashboard Staff */
 function init_staff(){
-    // Memuat data master saat Staff dashboard dimuat
     loadMasterData().then(loadStaffDashboard);
 }
 
-// Fungsi baru untuk memuat statistik dashboard Staff
+// Fungsi untuk memuat statistik dashboard Staff
 async function loadStaffDashboard() {
     const statsDiv = document.getElementById('staffStats');
-    const welcomeDiv = document.getElementById('staffWelcome');
     const user = currentUser();
     
-    // Pastikan DOM elements ada
     if (!statsDiv) return;
 
-    // Tambahkan welcome div jika belum ada (dari pages/staff.php)
-    if (!welcomeDiv) {
-        const panel = document.getElementById('staffPanel');
-        if (panel) {
-            panel.innerHTML = `<div id="staffWelcome"></div>`;
-        }
-    }
-    
+    // Tambahkan welcome text
     document.getElementById('staffWelcome').innerHTML = `Selamat datang, <b>${user.username}</b>. Gunakan menu untuk mengelola barang.`;
     statsDiv.innerHTML = '';
     showLoadingModal('Mengambil statistik Staff...');
 
     try {
-        // Memanggil endpoint baru
         const response = await fetch('api/report.php?action=staff_summary');
         const data = await response.json();
         
@@ -442,7 +536,7 @@ async function loadStaffDashboard() {
 
         const stats = data.data;
 
-        // Rendering 4 Kartu Statistik (sesuai referensi image_dea0be.png)
+        // Rendering 4 Kartu Statistik
         statsDiv.innerHTML = `
             <div class="stat-box" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                 <div class="stat-label">Total Jenis Barang (Approved)</div>
@@ -471,316 +565,284 @@ async function loadStaffDashboard() {
 }
 
 
-/* init_supervisor - Dashboard Supervisor */
-function init_supervisor(){
-    // TODO: Tambahkan fetch untuk statistik dashboard Supervisor di sini
-    console.log('Supervisor dashboard loaded.');
-}
-
-/* init_admin - Dashboard Admin */
-function init_admin(){
-    // TODO: Tambahkan fetch untuk statistik dashboard Admin di sini
-    console.log('Admin dashboard loaded.');
-}
-
-/* init_owner - Dashboard Owner */
-function init_owner(){
-    // Logika Owner Dashboard sudah disiapkan di pages/owner.php
-    if(typeof loadOwnerDashboard === 'function') {
-        loadOwnerDashboard();
-    }
-}
-
-/**
- * Helper untuk form submission transaksi (IN/OUT)
- * @param {string} type 'IN' atau 'OUT'
- * @param {HTMLFormElement} form Element form yang disubmit
- * @param {string} masterSelectId ID dari select Item
- * @param {string} masterIdSelectId ID dari select Supplier/Recipient
- */
-async function handleTransactionSubmit(type, form, itemSelectId, masterIdSelectId) {
-    const item_id = document.getElementById(itemSelectId).value;
-    const quantity = parseInt(document.getElementById(type === 'IN' ? 'bm_qty' : 'bk_qty').value);
-    const note = document.getElementById(type === 'IN' ? 'bm_note' : 'bk_note').value;
-    const master_id = document.getElementById(masterIdSelectId).value;
-
-    if (!item_id || !master_id || quantity <= 0) {
-        showMessageModal('Validasi Gagal', 'Semua field Item, Supplier/Penerima, dan Jumlah harus diisi dengan benar.', false);
-        return;
-    }
-    
-    showLoadingModal(`Mengajukan Permintaan ${type}...`);
-
-    try {
-        const response = await fetch('api/transactions.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                type: type,
-                item_id: item_id,
-                quantity: quantity,
-                note: note,
-                master_id: master_id
-            })
-        });
-
-        const data = await response.json();
-        
-        if (data.success) {
-            showMessageModal('✅ Sukses!', data.message + `<br>Kode Transaksi: <b>${data.data.code}</b>`, false);
-            form.reset();
-            // Muat ulang master data untuk update stok di form Barang Keluar
-            if (type === 'OUT') {
-                loadMasterData();
-            }
-        } else {
-            showMessageModal('❌ Gagal!', data.message, false);
-        }
-    } catch (error) {
-        showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi.', false);
-        console.error('Transaction submit error:', error);
-    } finally {
-        hideLoadingModal();
-    }
-}
-
-
-/* init_barang_masuk - Form Barang Masuk */
+/* init_barang_masuk - Form Barang Masuk (REVISI TOTAL) */
 function init_barang_masuk(){
     const form = document.getElementById('formBarangMasuk');
     if (!form) return;
     
-    const itemSelect = document.getElementById('bm_item');
+    const supplierSelect = document.getElementById('bm_supplier_id');
+    const skuInput = document.getElementById('bm_sku_input');
+    const resultsDiv = document.getElementById('autocompleteResults');
     
-    // Pastikan elemen select untuk Supplier sudah ada (atau buat)
-    let supplierSelect = document.getElementById('bm_supplier_id');
-    if (!supplierSelect) {
-        supplierSelect = document.createElement('select');
-        supplierSelect.id = 'bm_supplier_id';
-        supplierSelect.required = true;
+    let selectedItemId = null;
+    let selectedSupplierId = null;
 
-        // Cari label untuk bm_item dan sisipkan elemen Supplier di atasnya
-        const itemLabel = form.querySelector('label[for="bm_item"]');
-        if (itemLabel) {
-            itemLabel.before(supplierSelect);
-            const labelEl = document.createElement('label');
-            labelEl.textContent = 'Pilih Supplier (Klien)';
-            supplierSelect.before(labelEl);
-        }
-    }
-    
-    // Isi Dropdown Item dan Supplier
-    itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
-    supplierSelect.innerHTML = '<option value="">-- Pilih Supplier --</option>';
-
+    // Populate Dropdown Supplier
+    supplierSelect.innerHTML = '<option value="">-- Pilih Klien Pemilik Barang --</option>';
     masterDataCache.suppliers.forEach(s => {
         supplierSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
     });
-
-    masterDataCache.items.forEach(i => {
-        itemSelect.innerHTML += `<option value="${i.id}">${i.sku} - ${i.name} (${i.unit})</option>`;
-    });
-
-    form.onsubmit = function(e){
-        e.preventDefault();
-        handleTransactionSubmit('IN', form, 'bm_item', 'bm_supplier_id');
+    
+    // Fungsi reset item selection
+    const resetItemSelection = (showInput = true) => {
+        document.getElementById('bm_item_id').value = '';
+        selectedItemId = null;
+        document.getElementById('itemInfo').textContent = `Status Item: -`;
+        resultsDiv.style.display = 'none';
+        if (showInput) skuInput.value = '';
     };
-}
 
-/* init_barang_keluar - Form Barang Keluar */
-function init_barang_keluar(){
-    const form = document.getElementById('formBarangKeluar');
-    if (!form) return;
-    
-    const itemSelect = document.getElementById('bk_item');
-
-    // Pastikan elemen select untuk Penerima sudah ada (atau buat)
-    let recipientSelect = document.getElementById('bk_recipient_id'); 
-    if (!recipientSelect) {
-        recipientSelect = document.createElement('select');
-        recipientSelect.id = 'bk_recipient_id';
-        recipientSelect.required = true;
-
-        // Cari label untuk bk_item dan sisipkan elemen Penerima di atasnya
-        const itemLabel = form.querySelector('label[for="bk_item"]');
-        if (itemLabel) {
-            itemLabel.before(recipientSelect);
-            const labelEl = document.createElement('label');
-            labelEl.textContent = 'Pilih Penerima';
-            recipientSelect.before(labelEl);
-        }
-    }
-    
-    // Isi Dropdown Item dan Penerima
-    itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
-    recipientSelect.innerHTML = '<option value="">-- Pilih Penerima --</option>';
-
-    masterDataCache.recipients.forEach(r => {
-        recipientSelect.innerHTML += `<option value="${r.id}">${r.name} (${r.type})</option>`;
-    });
-
-    masterDataCache.items.forEach(i => {
-        itemSelect.innerHTML += `<option value="${i.id}">${i.sku} - ${i.name} (Stok: ${i.current_stock})</option>`;
-    });
-    
-    form.onsubmit = function(e){
-        e.preventDefault();
-        handleTransactionSubmit('OUT', form, 'bk_item', 'bk_recipient_id');
+    // Fungsi saat item dipilih dari autocomplete
+    const selectItem = (item) => {
+        skuInput.value = `${item.sku} - ${item.name} (${item.unit})`;
+        document.getElementById('bm_item_id').value = item.id;
+        selectedItemId = item.id;
+        document.getElementById('itemInfo').textContent = `Status Item: APPROVED | Unit: ${item.unit} | Stok Saat Ini: ${item.current_stock}`;
+        resultsDiv.style.display = 'none';
     };
-}
 
+    // 1. Event Listener untuk perubahan Supplier
+    supplierSelect.onchange = function() {
+        selectedSupplierId = this.value;
+        resetItemSelection();
+        skuInput.disabled = !selectedSupplierId; // Disable input jika supplier belum dipilih
+        skuInput.placeholder = selectedSupplierId ? "Ketik SKU atau Nama Item..." : "Pilih Supplier dahulu";
+    };
+    
+    // 2. Event Listener untuk Autocomplete SKU
+    skuInput.disabled = true;
+    skuInput.oninput = async (e) => {
+        const query = e.target.value;
+        resetItemSelection(false); // Reset ID, tapi jangan reset input text
+        resultsDiv.innerHTML = '';
 
-/**
- * Mengambil data pending dan merender tabel di halaman Approval.
- * @param {string} action 'transactions', 'items', atau 'suppliers'
- */
-async function loadApprovalData(action) {
-    // Tentukan ID div target
-    const listDiv = document.getElementById(
-        action === 'transactions' ? 'approvalList' : 'approvalItemsList'
-    );
-    if (!listDiv) return;
+        if (!selectedSupplierId) return;
 
-    listDiv.innerHTML = '<div class="card"><p>Memuat data...</p></div>';
-    showLoadingModal('Mengambil daftar PENDING...');
-
-    try {
-        const response = await fetch(`api/approval.php?action=${action}`);
-        const data = await response.json();
+        const results = await autocompleteItem(selectedSupplierId, query);
         
-        if (!data.success) {
-            listDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message}</p></div>`;
-            return;
+        if (results.length > 0) {
+            results.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'autocomplete-item';
+                el.innerHTML = `<strong>${item.sku}</strong> - ${item.name} (${item.unit}) <span style="float:right; color:var(--muted)">Stok: ${item.current_stock}</span>`;
+                el.onclick = () => selectItem(item);
+                resultsDiv.appendChild(el);
+            });
+            resultsDiv.style.display = 'block';
+        } else {
+             resultsDiv.innerHTML = '<div class="autocomplete-item disabled">Tidak ada item APPROVED ditemukan.</div>';
+             resultsDiv.style.display = 'block';
         }
-
-        if (data.data.length === 0) {
-            listDiv.innerHTML = '<div class="card"><h3 style="color:var(--success);">✅ Tidak ada permintaan PENDING saat ini.</h3></div>';
-            return;
-        }
-
-        let tableHtml = '<div class="card"><h2>Daftar Permintaan PENDING</h2><table class="table"><thead><tr>';
         
-        if (action === 'transactions') {
-            // Header untuk Approval Transaksi
-            tableHtml += '<th>ID</th><th>Tipe</th><th>Item (SKU)</th><th>Kuantitas</th><th>Klien/Penerima</th><th>Requester</th><th>Aksi</th>';
-            tableHtml += '</tr></thead><tbody>';
-            data.data.forEach(t => {
-                const badgeClass = t.type === 'IN' ? 'badge-in' : 'badge-out';
-                const masterName = t.type === 'IN' ? t.supplier_name : t.recipient_name;
-                
-                tableHtml += `
-                    <tr>
-                        <td>${t.transaction_code}</td>
-                        <td><span class="badge ${badgeClass}">${t.type}</span></td>
-                        <td>${t.item_name} (${t.sku})</td>
-                        <td>${t.quantity} ${t.unit}</td>
-                        <td>${masterName}</td>
-                        <td>${t.requester_name}</td>
-                        <td>
-                            <button class="btn success btn-sm" onclick="handleApprovalAction('approve_transaction', ${t.id}, 'transactions')">Approve</button>
-                            <button class="btn danger btn-sm" onclick="handleApprovalAction('reject_transaction', ${t.id}, 'transactions')">Reject</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        } else if (action === 'items') {
-             // Header untuk Approval Item Baru
-            tableHtml += '<th>ID</th><th>Item (SKU)</th><th>Klien Pemilik</th><th>Unit</th><th>Diajukan Oleh</th><th>Aksi</th>';
-            tableHtml += '</tr></thead><tbody>';
-            data.data.forEach(i => {
-                 tableHtml += `
-                    <tr>
-                        <td>${i.id}</td>
-                        <td>${i.name} (${i.sku})</td>
-                        <td>${i.supplier_name}</td>
-                        <td>${i.unit}</td>
-                        <td>${i.requester_name}</td>
-                        <td>
-                            <button class="btn success btn-sm" onclick="handleApprovalAction('approve_item', ${i.id}, 'items')">Setujui Item</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        } else if (action === 'suppliers') {
-            // Header untuk Approval Supplier Baru
-            tableHtml += '<th>ID</th><th>Nama Klien/PT</th><th>Kontak Person</th><th>Telepon</th><th>Diajukan Oleh</th><th>Aksi</th>';
-            tableHtml += '</tr></thead><tbody>';
-            data.data.forEach(s => {
-                 tableHtml += `
-                    <tr>
-                        <td>${s.id}</td>
-                        <td>${s.name}</td>
-                        <td>${s.contact_person ?? '-'}</td>
-                        <td>${s.phone ?? '-'}</td>
-                        <td>${s.requester_name}</td>
-                        <td>
-                            <button class="btn success btn-sm" onclick="handleApprovalAction('approve_supplier', ${s.id}, 'suppliers')">Setujui Klien</button>
-                        </td>
-                    </tr>
-                `;
-            });
+        if (query.length < 2) resultsDiv.style.display = 'none';
+    };
+
+    // Tutup dropdown jika klik di luar
+    document.addEventListener('click', (e) => {
+        if (!skuInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.style.display = 'none';
+        }
+    });
+
+    // 3. Event Listener untuk Form Submission
+    form.onsubmit = async function(e) {
+        e.preventDefault();
+        
+        if (!selectedItemId) {
+             showMessageModal('Validasi', 'Mohon cari dan pilih Item yang valid dari daftar saran.', false);
+             return;
         }
 
-        tableHtml += '</tbody></table></div>';
-        listDiv.innerHTML = tableHtml;
+        const payload = {
+            type: 'IN',
+            item_id: selectedItemId,
+            quantity: parseInt(document.getElementById('bm_qty').value),
+            note: document.getElementById('bm_note').value,
+            supplier_id: selectedSupplierId 
+        };
+        
+        showLoadingModal('Mengajukan Permintaan Barang Masuk...');
 
-    } catch (error) {
-        listDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error saat memuat data: ${error.message}</p></div>`;
-        console.error('Approval load error:', error);
-    } finally {
-        hideLoadingModal();
-    }
-}
-
-/**
- * Mengirim aksi Approval ke API
- * @param {string} action 'approve_transaction', 'reject_transaction', 'approve_item', atau 'approve_supplier'
- * @param {number} id ID Transaksi, Item, atau Supplier
- * @param {string} typeOfList Tipe daftar yang perlu dimuat ulang ('transactions', 'items', 'suppliers')
- */
-function handleApprovalAction(action, id, typeOfList) {
-    let confirmationMessage;
-    if (action === 'approve_transaction') {
-        confirmationMessage = 'Apakah Anda yakin ingin MENYETUJUI transaksi ini? Stok akan berubah secara permanen.';
-    } else if (action === 'reject_transaction') {
-        confirmationMessage = 'Apakah Anda yakin ingin MENOLAK transaksi ini? Status akan berubah menjadi REJECTED.';
-    } else if (action === 'approve_item') {
-        confirmationMessage = 'Apakah Anda yakin ingin MENYETUJUI Item baru ini? Item akan aktif untuk transaksi IN/OUT.';
-    } else if (action === 'approve_supplier') {
-        confirmationMessage = 'Apakah Anda yakin ingin MENYETUJUI Klien/Supplier baru ini? Klien akan aktif dan bisa digunakan.';
-    }
-
-    showMessageModal('Konfirmasi Aksi', confirmationMessage, true, async () => {
-        showLoadingModal('Memproses aksi...');
         try {
-            const response = await fetch('api/approval.php', {
+            const response = await fetch('api/transactions.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ action: action, id: id })
+                body: JSON.stringify(payload)
             });
 
             const data = await response.json();
             
             if (data.success) {
                 showMessageModal('✅ Sukses!', data.message, false);
-                // Muat ulang data setelah sukses
-                if (typeOfList === 'suppliers' || typeOfList === 'items') {
-                    // Karena approval items dan suppliers ada di halaman yang sama, muat ulang keduanya.
-                    loadMasterData(); // Muat ulang master data untuk update dropdown
-                    renderItemApprovalContent(typeOfList, document.querySelector(`#itemApprovalTabs button[onclick*="'${typeOfList}'"]`));
-                } else {
-                    loadApprovalData(typeOfList);
-                }
+                form.reset();
+                resetItemSelection();
+                // Muat ulang riwayat
+                renderStaffHistory('IN', 'riwayatMasukPanel');
             } else {
                 showMessageModal('❌ Gagal!', data.message, false);
             }
         } catch (error) {
-            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Approval.', false);
-            console.error('Approval action error:', error);
+            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi.', false);
+            console.error('Transaction submit error:', error);
         } finally {
             hideLoadingModal();
         }
+    };
+
+    // Muat Riwayat Transaksi Masuk
+    renderStaffHistory('IN', 'riwayatMasukPanel');
+}
+
+
+/* init_barang_keluar - Form Barang Keluar (REVISI TOTAL) */
+function init_barang_keluar(){
+    const form = document.getElementById('formBarangKeluar');
+    if (!form) return;
+    
+    const supplierSelect = document.getElementById('bk_supplier_id');
+    const itemSelect = document.getElementById('bk_item_id');
+    const infoDiv = document.getElementById('itemStockInfo');
+
+    // Populate Dropdown Supplier Filter (termasuk opsi 'Semua')
+    supplierSelect.innerHTML = '<option value="">-- Tampilkan Semua Klien --</option>';
+    masterDataCache.suppliers.forEach(s => {
+        supplierSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
     });
+    
+    let allItems = [...masterDataCache.items];
+    
+    // Fungsi untuk mengisi dropdown Item berdasarkan filter Supplier
+    const populateItemDropdown = (supplierId = '') => {
+        itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
+        infoDiv.textContent = 'Stok Saat Ini: -';
+        
+        const filteredItems = allItems.filter(item => {
+            return !supplierId || item.supplier_id == supplierId;
+        });
+
+        filteredItems.forEach(item => {
+            itemSelect.innerHTML += `<option value="${item.id}" data-stock="${item.current_stock}" data-unit="${item.unit}">${item.sku} - ${item.name} (Stok: ${item.current_stock})</option>`;
+        });
+        
+        // Reset max qty input
+        document.getElementById('bk_qty').max = null;
+    }
+
+    // Fungsi untuk menampilkan info stok saat item dipilih
+    const updateStockInfo = () => {
+        const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+        
+        if (selectedOption && selectedOption.value) {
+            const stock = selectedOption.getAttribute('data-stock');
+            const unit = selectedOption.getAttribute('data-unit');
+            
+            infoDiv.innerHTML = `Stok Tersedia: <b>${stock} ${unit}</b>`;
+            
+            // Set max value untuk input qty
+            document.getElementById('bk_qty').max = stock;
+        } else {
+            infoDiv.textContent = 'Stok Saat Ini: -';
+            document.getElementById('bk_qty').max = null;
+        }
+    };
+
+    // 1. Event Listener untuk perubahan Supplier (Filtering)
+    supplierSelect.onchange = function() {
+        populateItemDropdown(this.value);
+        updateStockInfo();
+    };
+
+    // 2. Event Listener untuk perubahan Item
+    itemSelect.onchange = updateStockInfo;
+    
+    // Muat dropdown item pertama kali (tanpa filter)
+    populateItemDropdown(''); 
+    
+    // 3. Event Listener untuk Form Submission
+    form.onsubmit = async function(e) {
+        e.preventDefault();
+        
+        const selectedItemId = document.getElementById('bk_item_id').value;
+        const quantity = parseInt(document.getElementById('bk_qty').value);
+        const recipientName = document.getElementById('bk_recipient_name').value.trim();
+        const recipientAddress = document.getElementById('bk_recipient_address').value.trim();
+        const note = document.getElementById('bk_note').value;
+
+        const selectedItemOption = itemSelect.options[itemSelect.selectedIndex];
+        const availableStock = parseInt(selectedItemOption.getAttribute('data-stock'));
+
+        // Validasi Sisi Klien
+        if (!selectedItemId || !recipientName || !recipientAddress || quantity <= 0) {
+             showMessageModal('Validasi', 'Semua field wajib diisi dengan benar.', false);
+             return;
+        }
+        if (quantity > availableStock) {
+             showMessageModal('Validasi Stok', `Jumlah yang diminta (${quantity}) melebihi stok tersedia (${availableStock}).`, false);
+             return;
+        }
+        
+        const payload = {
+            type: 'OUT',
+            item_id: selectedItemId,
+            quantity: quantity,
+            recipient_name: recipientName, // Dikirim ke API
+            recipient_address: recipientAddress, // Dikirim ke API
+            note: note
+        };
+        
+        showLoadingModal('Mengajukan Permintaan Barang Keluar...');
+
+        try {
+            const response = await fetch('api/transactions.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                showMessageModal('✅ Sukses!', data.message, false);
+                form.reset();
+                // Muat ulang data master (stok berubah setelah approval) dan riwayat
+                loadMasterData().then(() => {
+                    populateItemDropdown(supplierSelect.value); // Muat ulang dropdown dengan stok terbaru
+                    updateStockInfo();
+                    renderStaffHistory('OUT', 'riwayatKeluarPanel');
+                });
+            } else {
+                showMessageModal('❌ Gagal!', data.message, false);
+            }
+        } catch (error) {
+            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi.', false);
+            console.error('Transaction submit error:', error);
+        } finally {
+            hideLoadingModal();
+        }
+    };
+
+    // Muat Riwayat Transaksi Keluar
+    renderStaffHistory('OUT', 'riwayatKeluarPanel');
+}
+
+
+/* init_supervisor - Dashboard Supervisor */
+function init_supervisor(){
+    console.log('Supervisor dashboard loaded.');
+    // TODO: Tambahkan fetch untuk statistik dashboard Supervisor di sini
+}
+
+/* init_admin - Dashboard Admin */
+function init_admin(){
+    console.log('Admin dashboard loaded.');
+    // TODO: Tambahkan fetch untuk statistik dashboard Admin di sini
+}
+
+/* init_owner - Dashboard Owner */
+function init_owner(){
+    if(typeof loadOwnerDashboard === 'function') {
+        loadOwnerDashboard();
+    }
 }
 
 
@@ -789,20 +851,9 @@ function init_approval(){
     loadApprovalData('transactions');
 }
 
-/**
- * Helper untuk memuat kedua daftar approval (Item dan Supplier) di halaman approval_items.php
- */
-function loadApprovalItemsPage() {
-    loadApprovalData('items'); // Memuat Item Baru
-    loadApprovalData('suppliers'); // Memuat Supplier Baru
-}
-
 /* init_approval_items - Approval Item/Supplier Baru */
 function init_approval_items(){
-    // Tambahkan tab navigasi ke halaman approval_items.php
     const content = document.getElementById('content');
-    
-    // Periksa apakah halaman sudah di-override (untuk mencegah double render)
     if (!document.getElementById('itemApprovalTabs')) {
          content.innerHTML = `
             <div class="card">
@@ -816,8 +867,6 @@ function init_approval_items(){
             <div id="approvalItemsList"></div>
         `;
     }
-
-    // Render konten awal
     renderItemApprovalContent('items', document.querySelector('#itemApprovalTabs button:first-child'));
 }
 
@@ -829,15 +878,12 @@ function renderItemApprovalContent(type, element) {
     tabs.forEach(btn => btn.className = 'btn');
     element.className = 'btn primary';
 
-    // Panggil fungsi pemuatan data dengan tipe yang diminta
     loadApprovalData(type);
 }
 
 
 /* init_admin_users - User Management */
 function init_admin_users(){
-    // Logika CRUD user sudah ada di pages/admin_users.php script
-    // Fungsi loadUserList (di dalam pages/admin_users.php) akan dipanggil
     if(typeof loadUserList === 'function') {
         loadUserList();
     }
@@ -845,42 +891,34 @@ function init_admin_users(){
 
 /* init_notes - Notes Page */
 function init_notes(){
-    console.log('Notes page loaded');
-    // TODO: Implementasi CRUD Notes
+    if(typeof loadNotesList === 'function') {
+        loadNotesList();
+    }
 }
 
 /* init_owner_report - Owner Report */
 function init_owner_report(){
-    // Logika Laporan sudah ada di pages/owner_report.php script
-    // Memastikan tab summary aktif saat dimuat
-    if(document.getElementById('reportTabs')) {
+    if(document.getElementById('reportTabs') && typeof renderReport === 'function') {
         document.getElementById('reportTabs').querySelector('button:first-child').className = 'btn primary';
-        if(typeof renderReport === 'function') {
-            renderReport('summary');
-        }
+        renderReport('summary');
     }
 }
 
 /* init_request_item - Request Item Baru */
 function init_request_item(){
-    // Logika request item sudah ada di pages/request_item.php script
     loadMasterData().then(() => {
-        // Tampilkan form Item Baru secara default
-        if(typeof showRequestForm === 'function') {
-            showRequestForm('item', document.querySelector('#requestTabs button:first-child'));
+        if(typeof loadRequestHistory === 'function') {
+            loadRequestHistory();
         }
     });
 }
 
 /* init_manage_items - Admin Manage Items */
 function init_manage_items(){
-    // Logika CRUD Item sudah ada di pages/manage_items.php script
-    // Fungsi loadItemList (di dalam pages/manage_items.php) akan dipanggil
     if(typeof loadItemList === 'function') {
         loadItemList();
     }
 }
-
 
 // ---------- Expose to global scope ----------
 window.loadPage = loadPage;
@@ -895,7 +933,9 @@ window.storageSet = storageSet;
 window.showMessageModal = showMessageModal; 
 window.handleApprovalAction = handleApprovalAction;
 window.loadMasterData = loadMasterData;
-window.loadStaffDashboard = loadStaffDashboard; // Expose fungsi baru
+window.loadStaffDashboard = loadStaffDashboard; 
+window.renderStaffHistory = renderStaffHistory; // Expose helper
+window.autocompleteItem = autocompleteItem; // Expose helper
 
 // Expose init functions
 window.init_login = init_login;
@@ -912,7 +952,6 @@ window.init_notes = init_notes;
 window.init_owner_report = init_owner_report;
 window.init_request_item = init_request_item;
 window.init_manage_items = init_manage_items;
-window.loadApprovalItemsPage = loadApprovalItemsPage;
 window.renderItemApprovalContent = renderItemApprovalContent;
 
 // Log untuk debugging

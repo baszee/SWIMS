@@ -32,6 +32,7 @@
     <h3>Riwayat Request Saya</h3>
     <p class="small">Status pengajuan Klien/Supplier yang pernah Anda buat. Gunakan fitur ini untuk memantau apakah klien sudah aktif.</p>
     <div id="requestHistoryPanel">
+        <!-- Tabel riwayat dimuat oleh JS -->
         <p>Memuat riwayat...</p>
     </div>
 </div>
@@ -145,4 +146,7 @@
         // Muat riwayat
         loadRequestHistory();
     }
-</script>   
+    
+    // Expose fungsi ke global scope
+    window.loadRequestHistory = loadRequestHistory;
+</script>

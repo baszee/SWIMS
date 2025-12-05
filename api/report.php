@@ -1,6 +1,7 @@
 <?php
 // FILE: api/report.php
 // Fungsi: Menyediakan data statistik, monitoring, dan riwayat transaksi untuk Owner & Staff.
+// Versi: 2.1 - Adaptasi: recipients tabel dihapus, ditambah staff_history.
 session_start();
 include('../config/db_config.php'); 
 
@@ -41,36 +42,70 @@ if ($method === 'GET') {
     try {
         
         // =============================================================
-        // ENDPOINT BARU: STAFF SUMMARY (action=staff_summary)
+        // ENDPOINT STAFF
         // =============================================================
-        if ($action === 'staff_summary' && $user_role === 'staff') {
-             $stats = [];
+        if ($user_role === 'staff') {
             
-            // A. Total Item Aktif (Approved)
-            $stmt = $pdo->query("SELECT COUNT(id) as total_items FROM items WHERE is_approved = TRUE");
-            $stats['total_items'] = (int)$stmt->fetchColumn();
+            // action=staff_summary (untuk dashboard)
+            if ($action === 'staff_summary') {
+                 $stats = [];
+                
+                // A. Total Item Aktif (Approved)
+                $stmt = $pdo->query("SELECT COUNT(id) as total_items FROM items WHERE is_approved = TRUE");
+                $stats['total_items'] = (int)$stmt->fetchColumn();
 
-            // B. Pending Masuk (IN)
-            $stmt = $pdo->query("SELECT COUNT(id) FROM transactions WHERE type = 'IN' AND status = 'PENDING'");
-            $stats['pending_in'] = (int)$stmt->fetchColumn();
+                // B. Pending Masuk (IN)
+                $stmt = $pdo->query("SELECT COUNT(id) FROM transactions WHERE type = 'IN' AND status = 'PENDING'");
+                $stats['pending_in'] = (int)$stmt->fetchColumn();
 
-            // C. Pending Keluar (OUT)
-            $stmt = $pdo->query("SELECT COUNT(id) FROM transactions WHERE type = 'OUT' AND status = 'PENDING'");
-            $stats['pending_out'] = (int)$stmt->fetchColumn();
+                // C. Pending Keluar (OUT)
+                $stmt = $pdo->query("SELECT COUNT(id) FROM transactions WHERE type = 'OUT' AND status = 'PENDING'");
+                $stats['pending_out'] = (int)$stmt->fetchColumn();
 
-            // D. Pending Item/Supplier Baru
-            $stmt_items = $pdo->query("SELECT COUNT(id) FROM items WHERE is_approved = FALSE");
-            $count_items = $stmt_items->fetchColumn();
+                // D. Pending Item/Supplier Baru
+                $stmt_items = $pdo->query("SELECT COUNT(id) FROM items WHERE is_approved = FALSE");
+                $count_items = $stmt_items->fetchColumn();
+                
+                $stmt_suppliers = $pdo->query("SELECT COUNT(id) FROM suppliers WHERE is_active = FALSE");
+                $count_suppliers = $stmt_suppliers->fetchColumn();
+                
+                $stats['pending_new_masters'] = $count_items + $count_suppliers;
+
+                api_response(true, "Ringkasan data staff dashboard berhasil diambil.", $stats);
+            }
             
-            $stmt_suppliers = $pdo->query("SELECT COUNT(id) FROM suppliers WHERE is_active = FALSE");
-            $count_suppliers = $stmt_suppliers->fetchColumn();
-            
-            $stats['pending_new_masters'] = $count_items + $count_suppliers;
+            // action=staff_history (RIWAYAT TRANSAKSI STAFF YANG SEDANG LOGIN)
+            if ($action === 'staff_history') {
+                $sql = "
+                    SELECT 
+                        t.transaction_code, 
+                        t.type, 
+                        t.quantity, 
+                        t.status,
+                        t.request_date,
+                        t.approval_date,
+                        i.name AS item_name, 
+                        i.sku,
+                        s.name AS supplier_name,
+                        u_app.username AS approver
+                    FROM transactions t
+                    JOIN items i ON t.item_id = i.id
+                    LEFT JOIN suppliers s ON t.supplier_id = s.id
+                    LEFT JOIN users u_app ON t.approved_by_user_id = u_app.id
+                    WHERE t.request_by_user_id = ?
+                    ORDER BY t.request_date DESC
+                    LIMIT 20
+                ";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$user_id]);
+                $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                api_response(true, "Riwayat transaksi Staff berhasil diambil.", $history);
+            }
 
-            api_response(true, "Ringkasan data staff dashboard berhasil diambil.", $stats);
         }
+        
         // =============================================================
-        // ENDPOINT LAMA: OWNER REPORTS (action=summary, inventory, history)
+        // ENDPOINT OWNER REPORTS
         // =============================================================
         elseif ($user_role === 'owner') {
 
@@ -78,13 +113,11 @@ if ($method === 'GET') {
                 // Laporan 1: Ringkasan Statistik
                 $stats = [];
                 
-                // A. Total Stok dan Item Aktif
                 $stmt = $pdo->query("SELECT SUM(current_stock) as total_stock, COUNT(id) as total_items FROM items WHERE is_approved = TRUE");
                 $stock_data = $stmt->fetch();
                 $stats['total_stock'] = (int)($stock_data['total_stock'] ?? 0);
                 $stats['total_items'] = (int)($stock_data['total_items'] ?? 0);
 
-                // B. Status Approval Transaksi
                 $stmt = $pdo->query("SELECT status, COUNT(id) as count FROM transactions GROUP BY status");
                 $transaction_status = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
                 $stats['transactions'] = [
@@ -93,19 +126,16 @@ if ($method === 'GET') {
                     'rejected' => (int)($transaction_status['REJECTED'] ?? 0),
                 ];
 
-                // C. Item di bawah Stok Minimum (Peringatan)
                 $stmt = $pdo->query("SELECT COUNT(id) FROM items WHERE is_approved = TRUE AND current_stock <= min_stock");
                 $stats['low_stock'] = (int)$stmt->fetchColumn();
 
-                // D. Item Baru PENDING Approval
                 $stmt = $pdo->query("SELECT COUNT(id) FROM items WHERE is_approved = FALSE");
                 $stats['pending_items'] = (int)$stmt->fetchColumn();
-
 
                 api_response(true, "Ringkasan data monitoring berhasil diambil.", $stats);
 
             } elseif ($action === 'inventory') {
-                // Laporan 2: Daftar Stok Lengkap (Stok per Item dan per Supplier)
+                // Laporan 2: Daftar Stok Lengkap
                 $sql = "
                     SELECT 
                         i.id, i.sku, i.name AS item_name, i.unit, i.current_stock, i.min_stock, i.is_approved,
@@ -119,22 +149,21 @@ if ($method === 'GET') {
                 api_response(true, "Laporan inventaris lengkap berhasil diambil.", $inventory);
                 
             } elseif ($action === 'history') {
-                // Laporan 3: Riwayat Transaksi Lengkap
+                // Laporan 3: Riwayat Transaksi Lengkap (Adaptasi untuk skema baru)
                 $sql = "
                     SELECT 
                         t.id, t.transaction_code, t.type, t.quantity, t.note, t.status,
                         t.request_date, t.approval_date,
+                        t.recipient_name, t.recipient_address,
                         i.name AS item_name, i.sku,
                         u_req.username AS requester,
                         u_app.username AS approver,
-                        s.name AS supplier_name,
-                        r.name AS recipient_name
+                        s.name AS supplier_name
                     FROM transactions t
                     JOIN items i ON t.item_id = i.id
                     JOIN users u_req ON t.request_by_user_id = u_req.id
                     LEFT JOIN users u_app ON t.approved_by_user_id = u_app.id
                     LEFT JOIN suppliers s ON t.supplier_id = s.id
-                    LEFT JOIN recipients r ON t.recipient_id = r.id
                     ORDER BY t.request_date DESC
                 ";
                 $stmt = $pdo->query($sql);
