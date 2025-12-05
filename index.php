@@ -30,6 +30,14 @@ session_start();
 
   <!-- Load JavaScript Logic -->
   <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/user_management.js"></script> 
+  <script src="js/dashboard.js"></script> 
+  <script src="js/transactions.js"></script>
+  <script src="js/approval.js"></script> 
+  
+  <script src="js/notes.js"></script>
+  <script src="js/reports.js"></script>
   <script>
     // Inisialisasi aplikasi. Memuat status user dari Session/API
     checkSessionAndRender(); 
