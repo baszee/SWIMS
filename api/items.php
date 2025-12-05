@@ -1,8 +1,8 @@
 <?php
 // FILE: api/items.php
 // Fungsi: API CRUD untuk Data Master Barang/Item dan Stok
+// Versi: 2.0 - Tambah endpoint search untuk autocomplete
 session_start();
-// Pastikan path sudah diubah menjadi '../config/db_config.php'
 include('../config/db_config.php'); 
 
 header('Content-Type: application/json');
@@ -40,16 +40,89 @@ try {
     switch ($method) {
         // READ: Mengambil daftar Item
         case 'GET':
-            // Jika ada query 'available', hanya tampilkan item yang sudah diapprove
-            if (isset($_GET['action']) && $_GET['action'] === 'available') {
-                $stmt = $pdo->query("
-                    SELECT i.id, i.sku, i.name, i.unit, i.current_stock, s.name as supplier_name 
-                    FROM items i JOIN suppliers s ON i.supplier_id = s.id 
-                    WHERE i.is_approved = TRUE 
-                    ORDER BY i.name ASC
-                ");
-            } else {
-                // Tampilkan semua data item untuk manajemen atau laporan
+            $action = $_GET['action'] ?? 'list';
+            
+            // =====================================================================
+            // ENDPOINT BARU: SEARCH ITEM (untuk Autocomplete di Barang Masuk)
+            // =====================================================================
+            if ($action === 'search') {
+                $supplier_id = $_GET['supplier_id'] ?? null;
+                $query = trim($_GET['q'] ?? '');
+                
+                if (!$supplier_id) {
+                    api_response(false, "Supplier ID wajib diisi untuk search.", null, 400);
+                }
+                
+                // Search by SKU atau Nama
+                $sql = "
+                    SELECT 
+                        i.id, 
+                        i.sku, 
+                        i.name, 
+                        i.unit, 
+                        i.current_stock,
+                        s.name as supplier_name
+                    FROM items i 
+                    JOIN suppliers s ON i.supplier_id = s.id 
+                    WHERE i.supplier_id = ? 
+                      AND i.is_approved = TRUE
+                ";
+                
+                $params = [$supplier_id];
+                
+                // Jika ada query pencarian
+                if (!empty($query)) {
+                    $sql .= " AND (i.sku LIKE ? OR i.name LIKE ?)";
+                    $search_term = "%{$query}%";
+                    $params[] = $search_term;
+                    $params[] = $search_term;
+                }
+                
+                $sql .= " ORDER BY i.name ASC LIMIT 10";
+                
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($params);
+                $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                api_response(true, "Hasil pencarian item.", $items);
+            }
+            
+            // =====================================================================
+            // ENDPOINT: AVAILABLE ITEMS (Untuk dropdown di form)
+            // =====================================================================
+            elseif ($action === 'available') {
+                $supplier_id = $_GET['supplier_id'] ?? null;
+                
+                $sql = "
+                    SELECT 
+                        i.id, 
+                        i.sku, 
+                        i.name, 
+                        i.unit, 
+                        i.current_stock, 
+                        s.name as supplier_name 
+                    FROM items i 
+                    JOIN suppliers s ON i.supplier_id = s.id 
+                    WHERE i.is_approved = TRUE
+                ";
+                
+                // Filter by supplier jika ada
+                if ($supplier_id) {
+                    $sql .= " AND i.supplier_id = ?";
+                    $stmt = $pdo->prepare($sql . " ORDER BY i.name ASC");
+                    $stmt->execute([$supplier_id]);
+                } else {
+                    $stmt = $pdo->query($sql . " ORDER BY i.name ASC");
+                }
+                
+                $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                api_response(true, "Daftar item approved berhasil diambil.", $items);
+            }
+            
+            // =====================================================================
+            // ENDPOINT: LIST ALL (Untuk manajemen)
+            // =====================================================================
+            else {
                 $stmt = $pdo->query("
                     SELECT i.*, s.name as supplier_name, u.username as created_by 
                     FROM items i 
@@ -57,11 +130,12 @@ try {
                     JOIN users u ON i.created_by_user_id = u.id 
                     ORDER BY i.name ASC
                 ");
+                $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                api_response(true, "Daftar semua item berhasil diambil.", $items);
             }
-            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            api_response(true, "Daftar item berhasil diambil.", $items);
+            break;
 
-        // CREATE: Menambah Item baru (Digunakan oleh Admin (APPROVED) atau Staff (PENDING))
+        // CREATE: Menambah Item baru
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
             $sku = trim($data['sku'] ?? '');
@@ -69,18 +143,24 @@ try {
             $unit = $data['unit'] ?? 'Pcs';
             $supplier_id = $data['supplier_id'] ?? null;
             $min_stock = $data['min_stock'] ?? 10;
-            $current_stock = $data['current_stock'] ?? 0; // Stok awal
+            $current_stock = $data['current_stock'] ?? 0;
 
             if (empty($sku) || empty($name) || !$supplier_id) {
                 api_response(false, "SKU, Nama Item, dan Supplier wajib diisi.", null, 400);
             }
             
-            // Logika Persetujuan Otomatis:
-            // Jika Admin yang membuat, langsung APPROVED (TRUE).
-            // Jika Staff yang membuat (melalui Request Item), statusnya PENDING (FALSE).
+            // Cek duplikat SKU
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM items WHERE sku = ?");
+            $stmt_check->execute([$sku]);
+            if ($stmt_check->fetchColumn() > 0) {
+                api_response(false, "SKU '{$sku}' sudah terdaftar. Gunakan SKU yang berbeda.", null, 409);
+            }
+            
+            // Logika Persetujuan: Admin langsung APPROVED, Staff PENDING
             $is_approved_status = ($user_role === 'admin') ? TRUE : FALSE;
-            $response_message = ($user_role === 'admin') ? "Item '{$name}' berhasil ditambahkan dan langsung disetujui." : "Permintaan Item '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
-
+            $response_message = ($user_role === 'admin') 
+                ? "Item '{$name}' berhasil ditambahkan dan langsung disetujui." 
+                : "Permintaan Item '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
 
             $stmt = $pdo->prepare("INSERT INTO items (sku, name, unit, supplier_id, min_stock, current_stock, is_approved, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->execute([$sku, $name, $unit, $supplier_id, $min_stock, $current_stock, $is_approved_status, $user_id]);
@@ -98,18 +178,16 @@ try {
             $id = $data['id'] ?? null;
             $name = trim($data['name'] ?? '');
             $min_stock = $data['min_stock'] ?? 10;
-            $is_approved = $data['is_approved'] ?? null; // Digunakan untuk fungsi Approval Item
+            $is_approved = $data['is_approved'] ?? null;
 
             if (!$id) {
                 api_response(false, "ID Item wajib diisi.", null, 400);
             }
 
-            // Hanya update field yang relevan untuk manajemen
             $sql = "UPDATE items SET name = ?, min_stock = ?";
             $params = [$name, $min_stock];
             
             if ($is_approved !== null) {
-                // Hanya Admin atau Supervisor yang boleh mengubah status approval
                 if ($user_role !== 'admin' && $user_role !== 'supervisor') {
                     api_response(false, "Anda tidak memiliki hak untuk mengubah status approval.", null, 403);
                 }
@@ -125,9 +203,9 @@ try {
 
             api_response(true, "Data Item ID:{$id} berhasil diupdate.", null);
 
-        // DELETE: Item tidak dihapus, hanya di-deactivate (jika ada kebutuhan)
+        // DELETE: Item tidak dihapus
         case 'DELETE':
-            api_response(false, "Penghapusan item tidak diizinkan. Silakan gunakan fungsi manajemen untuk mengatur is_approved atau status lain.", null, 405);
+            api_response(false, "Penghapusan item tidak diizinkan. Gunakan fungsi manajemen untuk disable item.", null, 405);
             break;
 
         default:

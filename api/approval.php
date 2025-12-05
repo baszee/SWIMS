@@ -1,6 +1,7 @@
 <?php
 // FILE: api/approval.php
 // Fungsi: Menangani daftar PENDING dan mengeksekusi Approval/Rejection (Update Stok)
+// Versi: 2.0 - Update untuk support recipient_name & recipient_address
 session_start();
 include('../config/db_config.php'); 
 
@@ -37,24 +38,32 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     
     switch ($method) {
-        // READ: Mengambil daftar Transaksi PENDING (untuk halaman approval.php)
+        // READ: Mengambil daftar PENDING
         case 'GET':
-            $action = $_GET['action'] ?? 'transactions'; // Bisa 'transactions', 'items', atau 'suppliers'
+            $action = $_GET['action'] ?? 'transactions';
             
             if ($action === 'transactions') {
-                // Ambil semua transaksi yang masih PENDING (JOIN untuk nama item, user, supplier/recipient)
+                // Ambil semua transaksi yang masih PENDING
                 $sql = "
                     SELECT 
-                        t.id, t.transaction_code, t.type, t.quantity, t.note, t.request_date, t.status,
-                        i.sku, i.name AS item_name, i.unit,
+                        t.id, 
+                        t.transaction_code, 
+                        t.type, 
+                        t.quantity, 
+                        t.note, 
+                        t.request_date, 
+                        t.status,
+                        t.recipient_name,
+                        t.recipient_address,
+                        i.sku, 
+                        i.name AS item_name, 
+                        i.unit,
                         u.username AS requester_name,
-                        s.name AS supplier_name,
-                        r.name AS recipient_name
+                        s.name AS supplier_name
                     FROM transactions t
                     JOIN items i ON t.item_id = i.id
                     JOIN users u ON t.request_by_user_id = u.id
                     LEFT JOIN suppliers s ON t.supplier_id = s.id
-                    LEFT JOIN recipients r ON t.recipient_id = r.id
                     WHERE t.status = 'PENDING'
                     ORDER BY t.request_date ASC
                 ";
@@ -63,10 +72,14 @@ try {
                 api_response(true, "Daftar transaksi PENDING berhasil diambil.", $pending_list);
             
             } elseif ($action === 'items') {
-                // Ambil Item Baru yang masih belum disetujui (untuk halaman approval_items.php)
+                // Ambil Item Baru yang masih belum disetujui
                 $sql = "
                     SELECT 
-                        i.id, i.sku, i.name, i.unit, i.min_stock, 
+                        i.id, 
+                        i.sku, 
+                        i.name, 
+                        i.unit, 
+                        i.min_stock, 
                         s.name AS supplier_name, 
                         u.username AS requester_name,
                         i.created_at
@@ -81,10 +94,14 @@ try {
                 api_response(true, "Daftar Item Baru PENDING berhasil diambil.", $pending_items);
 
             } elseif ($action === 'suppliers') {
-                 // Ambil Supplier Baru yang masih belum disetujui (is_active = FALSE)
-                 $sql = "
+                // Ambil Supplier Baru yang masih belum disetujui
+                $sql = "
                     SELECT 
-                        s.id, s.name, s.contact_person, s.phone, s.address, 
+                        s.id, 
+                        s.name, 
+                        s.contact_person, 
+                        s.phone, 
+                        s.address, 
                         u.username AS requester_name,
                         s.created_at
                     FROM suppliers s
@@ -101,7 +118,7 @@ try {
         // UPDATE/AKSI: Mengeksekusi Approval/Rejection
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
-            $action = $data['action'] ?? ''; // 'approve_transaction', 'reject_transaction', 'approve_item', 'approve_supplier'
+            $action = $data['action'] ?? '';
             $id = $data['id'] ?? null;
 
             if (!$id || empty($action)) {
@@ -124,7 +141,7 @@ try {
                     api_response(false, "Transaksi tidak ditemukan atau status sudah diproses.", null, 404);
                 }
 
-                // Mulai SQL Transaction: Wajib untuk menjaga konsistensi data stok
+                // Mulai SQL Transaction
                 $pdo->beginTransaction();
 
                 try {
@@ -137,7 +154,6 @@ try {
                         $stmt_update_stock = $pdo->prepare($sql_update_stock);
                         $stmt_update_stock->execute([$transaction['quantity'], $transaction['item_id']]);
                         
-                        // Cek apakah update stok berhasil (hanya untuk pencegahan error)
                         if ($stmt_update_stock->rowCount() === 0) {
                              throw new Exception("Gagal update stok, item ID: {$transaction['item_id']} tidak ditemukan.");
                         }
@@ -148,21 +164,20 @@ try {
                         $stmt_update_trans->execute([$status, $user_id, $id]);
                         
                     } else { // Jika REJECTED
-                        // Hanya update status transaksi, stok tidak perlu diubah
+                        // Hanya update status transaksi, stok tidak berubah
                         $sql_update_trans = "UPDATE transactions SET status = ?, approved_by_user_id = ?, approval_date = NOW() WHERE id = ?";
                         $stmt_update_trans = $pdo->prepare($sql_update_trans);
                         $stmt_update_trans->execute([$status, $user_id, $id]);
                     }
 
-                    // Commit jika semua langkah berhasil
+                    // Commit
                     $pdo->commit();
                     api_response(true, "Transaksi ID:{$id} berhasil di{$status} dan stok diperbarui.", null);
 
                 } catch (Exception $e) {
-                    // Rollback jika ada error di tengah proses (menjaga integritas stok)
                     $pdo->rollBack();
                     error_log("SQL Transaction Failed in approval.php: " . $e->getMessage());
-                    api_response(false, "Gagal mengeksekusi persetujuan/penolakan karena error database. Stok tidak berubah.", null, 500);
+                    api_response(false, "Gagal mengeksekusi persetujuan/penolakan karena error database.", null, 500);
                 }
                 
             } 
@@ -171,7 +186,6 @@ try {
             // B. APPROVE ITEM BARU
             // ----------------------------------------------------------------------
             elseif ($action === 'approve_item') {
-                // Update is_approved = TRUE pada tabel items
                 $stmt = $pdo->prepare("UPDATE items SET is_approved = TRUE WHERE id = ? AND is_approved = FALSE");
                 $stmt->execute([$id]);
                 
@@ -183,10 +197,9 @@ try {
             }
 
             // ----------------------------------------------------------------------
-            // C. APPROVE SUPPLIER BARU (KODE YANG HILANG)
+            // C. APPROVE SUPPLIER BARU
             // ----------------------------------------------------------------------
             elseif ($action === 'approve_supplier') {
-                // Update is_active = TRUE pada tabel suppliers
                 $stmt = $pdo->prepare("UPDATE suppliers SET is_active = TRUE WHERE id = ? AND is_active = FALSE");
                 $stmt->execute([$id]);
                 
