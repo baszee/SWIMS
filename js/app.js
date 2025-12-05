@@ -212,8 +212,7 @@ function renderMenu(){
     
     if (role === 'admin'){
         buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('admin_users')">User Management</button>`;
-        buttons += `<button onclick="loadPage('manage_items')">Manage Item</button>`; 
+        buttons += `<button onclick="loadPage('admin_users')">User Management</button>`; 
     }
     
     if (role === 'owner'){
@@ -885,7 +884,7 @@ function init_supervisor(){
 
 /* init_admin - Dashboard Admin */
 function init_admin(){
-    console.log('Admin dashboard loaded.');
+    loadAdminDashboard();
 }
 
 /* init_owner - Dashboard Owner */
@@ -970,6 +969,134 @@ function init_manage_items(){
     }
 }
 
+// ---------- Fungsi untuk Admin Dashboard ----------
+
+async function loadAdminDashboard() {
+    const dashboardDiv = document.getElementById('adminUserList');
+    if (!dashboardDiv) return;
+    
+    dashboardDiv.innerHTML = '<div class="card"><p>Memuat data user...</p></div>';
+    showLoadingModal('Mengambil data user...');
+    
+    try {
+        const response = await fetch('api/admin_users.php');
+        const data = await response.json();
+        
+        if (!data.success) {
+            dashboardDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message}</p></div>`;
+            return;
+        }
+
+        // Hitung statistik
+        const totalUsers = data.data.length;
+        const activeUsers = data.data.filter(u => u.is_active == 1).length;
+        const inactiveUsers = data.data.filter(u => u.is_active == 0).length;
+        
+        // Hitung per role
+        const roleCount = {
+            admin: data.data.filter(u => u.role === 'admin').length,
+            staff: data.data.filter(u => u.role === 'staff').length,
+            supervisor: data.data.filter(u => u.role === 'supervisor').length,
+            owner: data.data.filter(u => u.role === 'owner').length
+        };
+
+        let html = `
+            <div class="card">
+                <h2>👨‍💼 Admin Dashboard</h2>
+                <p class="small">Selamat datang, Administrator! Berikut adalah ringkasan pengguna sistem SWIMS.</p>
+            </div>
+            
+            <!-- Statistik User -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+                <div class="stat-box" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="stat-label">Total User</div>
+                    <div class="stat-value">${totalUsers}</div>
+                </div>
+                <div class="stat-box success">
+                    <div class="stat-label">User Aktif</div>
+                    <div class="stat-value">${activeUsers}</div>
+                </div>
+                <div class="stat-box danger">
+                    <div class="stat-label">User Non-aktif</div>
+                    <div class="stat-value">${inactiveUsers}</div>
+                </div>
+            </div>
+            
+            <!-- Statistik Per Role -->
+            <div class="card">
+                <h3>Statistik Berdasarkan Role</h3>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px;">
+                    <div class="stat-box" style="background:#3b82f6;">
+                        <div class="stat-label">Admin</div>
+                        <div class="stat-value">${roleCount.admin}</div>
+                    </div>
+                    <div class="stat-box" style="background:#8b5cf6;">
+                        <div class="stat-label">Staff</div>
+                        <div class="stat-value">${roleCount.staff}</div>
+                    </div>
+                    <div class="stat-box" style="background:#ec4899;">
+                        <div class="stat-label">Supervisor</div>
+                        <div class="stat-value">${roleCount.supervisor}</div>
+                    </div>
+                    <div class="stat-box" style="background:#f59e0b;">
+                        <div class="stat-label">Owner</div>
+                        <div class="stat-value">${roleCount.owner}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabel User Terdaftar -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Daftar User Terdaftar</h3>
+                    <button class="btn primary" onclick="loadPage('admin_users')">Kelola User</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Terdaftar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Render tabel user
+        data.data.forEach(user => {
+            const statusBadge = user.is_active == 1 
+                ? '<span class="badge badge-success">Aktif</span>' 
+                : '<span class="badge badge-danger">Non-aktif</span>';
+            
+            html += `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.username}</td>
+                    <td><span class="role-badge">${user.role}</span></td>
+                    <td>${statusBadge}</td>
+                    <td>${user.created_at.substring(0, 10)}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        dashboardDiv.innerHTML = html;
+
+    } catch (error) {
+        dashboardDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error saat memuat data: ${error.message}</p></div>`;
+        console.error('Admin dashboard load error:', error);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
 // ---------- Expose to global scope ----------
 window.loadPage = loadPage;
 window.renderUserBar = renderUserBar;
@@ -984,6 +1111,7 @@ window.showMessageModal = showMessageModal;
 window.handleApprovalAction = handleApprovalAction;
 window.loadMasterData = loadMasterData;
 window.loadStaffDashboard = loadStaffDashboard; 
+window.loadAdminDashboard = loadAdminDashboard;
 window.renderStaffHistory = renderStaffHistory; 
 window.autocompleteItem = autocompleteItem; 
 window.renderItemApprovalContent = renderItemApprovalContent;
