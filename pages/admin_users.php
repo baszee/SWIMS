@@ -12,3 +12,6 @@
         <p>Memuat daftar pengguna...</p>
     </div>
 </div>
+
+<!-- PENTING: pages/admin.php harus memiliki element berbeda! -->
+<!-- File ini adalah untuk admin_users, bukan admin dashboard -->
