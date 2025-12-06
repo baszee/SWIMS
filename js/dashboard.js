@@ -65,9 +65,11 @@ async function loadStaffDashboard() {
 
 
 /* init_supervisor - Dashboard Supervisor */
+// NOTE: Logika init_supervisor sudah ada di pages/supervisor.php
+// Fungsi ini hanya sebagai fallback jika dipanggil langsung
 function init_supervisor(){
-    console.log('Supervisor dashboard loaded.');
-    // Tambahkan fungsi loadSupervisorDashboard() jika ada logika spesifik
+    console.log('Init supervisor called from dashboard.js');
+    // Actual init ada di pages/supervisor.php sebagai window.init_supervisor
 }
 
 /* init_admin - Dashboard Admin */

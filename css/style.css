@@ -336,6 +336,64 @@ hr{
   margin:16px 0;
 }
 
+/* ------------------------------------------- */
+/* Modal Nota QR Code */
+/* ------------------------------------------- */
+#notaModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#notaModal .card {
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#qrCodeContainer {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    padding: 15px;
+    background: #fff;
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+}
+
+#notaDetails {
+    text-align: left;
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    border-left: 4px solid var(--primary);
+}
+
+#notaDetails p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+}
+
 @media(max-width:700px){ 
   .menu{ 
     padding:8px; 

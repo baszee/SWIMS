@@ -27,6 +27,10 @@ session_start();
   <!-- QR code lib (Untuk fitur Supervisor Notes) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
+  <!-- jsPDF untuk PDF Generator (TAMBAHKAN INI) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+
   <!-- Load JavaScript Logic - URUTAN PENTING! -->
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
