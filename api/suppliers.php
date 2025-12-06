@@ -1,8 +1,8 @@
 <?php
 // FILE: api/suppliers.php
 // Fungsi: API CRUD untuk Data Master Supplier (Klien/PT Pemilik Barang)
+// Versi: 2.3 - FIX Critical: Missing return/exit after api_response
 session_start();
-// Pastikan path sudah diubah menjadi '../config/db_config.php'
 include('../config/db_config.php'); 
 
 header('Content-Type: application/json');
@@ -42,37 +42,46 @@ try {
     switch ($method) {
         // READ: Mengambil daftar Supplier
         case 'GET':
+            $action = $_GET['action'] ?? '';
+            
             // ---------------------------------------------------
             // Endpoint 1: Riwayat Request Staff Sendiri (action=my_requests)
             // ---------------------------------------------------
-            if (isset($_GET['action']) && $_GET['action'] === 'my_requests') {
+            if ($action === 'my_requests') {
                 // Hanya Staff yang boleh melihat requestnya sendiri
                 if ($user_role !== 'staff') {
                     api_response(false, "Akses hanya untuk Staff.", null, 403);
                 }
                 
                 // Ambil request supplier berdasarkan user_id yang sedang login
-                $sql = "SELECT id, name, is_active, created_at FROM suppliers WHERE created_by_user_id = ? ORDER BY created_at DESC";
+                $sql = "SELECT id, name, contact_person, phone, address, is_active, created_at 
+                        FROM suppliers 
+                        WHERE created_by_user_id = ? 
+                        ORDER BY created_at DESC";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([$user_id]);
                 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 api_response(true, "Riwayat request supplier berhasil diambil.", $requests);
+                // ↑ exit() sudah dipanggil di dalam api_response()
             }
-            // ---------------------------------------------------
 
+            // ---------------------------------------------------
             // Endpoint 2: Daftar Supplier Aktif (action=list) - untuk dropdown
-            if (isset($_GET['action']) && $_GET['action'] === 'list') {
+            // ---------------------------------------------------
+            if ($action === 'list') {
                 $stmt = $pdo->query("SELECT id, name FROM suppliers WHERE is_active = TRUE ORDER BY name ASC");
                 $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar supplier berhasil diambil.", $suppliers);
+                // ↑ exit() sudah dipanggil di dalam api_response()
             }
             
+            // ---------------------------------------------------
             // Endpoint 3: GET umum (tanpa action) - tampilkan semua data
+            // ---------------------------------------------------
             $stmt = $pdo->query("SELECT * FROM suppliers ORDER BY name ASC");
             $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
             api_response(true, "Data supplier berhasil diambil.", $suppliers);
-            
             break; 
 
         // CREATE: Menambah Supplier baru
@@ -95,12 +104,15 @@ try {
             // Logika Persetujuan Otomatis:
             // Jika Admin, langsung TRUE. Jika Staff, PENDING (FALSE).
             $is_active_status = ($user_role === 'admin') ? TRUE : FALSE;
-            $response_message = ($user_role === 'admin') ? "Supplier '{$name}' berhasil ditambahkan dan langsung disetujui." : "Permintaan Supplier '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
+            $response_message = ($user_role === 'admin') 
+                ? "Supplier '{$name}' berhasil ditambahkan dan langsung disetujui." 
+                : "Permintaan Supplier '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
 
             $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, address, is_active, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)");
             $stmt->execute([$name, $contact_person, $phone, $address, $is_active_status, $user_id]);
 
             api_response(true, $response_message, ['id' => $pdo->lastInsertId()], 201);
+            break;
             
         // UPDATE: Mengubah data Supplier
         case 'PUT':
@@ -129,6 +141,7 @@ try {
             $stmt->execute($params);
 
             api_response(true, "Data Supplier ID:{$id} berhasil diupdate.", null);
+            break;
 
         // DELETE: Menghapus (Deactivate) Supplier
         case 'DELETE':
@@ -148,6 +161,7 @@ try {
             $stmt->execute([$id]);
 
             api_response(true, "Supplier ID:{$id} berhasil di-deactivate (dihapus logis).", null);
+            break;
 
         default:
             api_response(false, "Method '{$method}' tidak diizinkan.", null, 405);
