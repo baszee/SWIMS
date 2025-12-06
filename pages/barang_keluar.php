@@ -83,6 +83,9 @@
             return !supplierId || item.supplier_id == supplierId;
         });
 
+        console.log('📦 Filtered items count:', currentFilteredItems.length);
+        console.log('📦 Total items in cache:', masterDataCache.items.length);
+
         if (currentFilteredItems.length === 0) {
             itemSelect.innerHTML = '<option value="">-- Tidak ada item tersedia --</option>';
             return;
@@ -188,21 +191,45 @@
     }
     
     // ========================================
-    // INIT FUNCTION
+    // INIT FUNCTION - FIXED WITH FORCE RELOAD
     // ========================================
-    window.init_barang_keluar = function() {
+    window.init_barang_keluar = async function() {
+        console.log('🚀 Init Barang Keluar v6.0 - FORCE RELOAD');
+        
+        // CRITICAL: Force reload master data setiap kali halaman dibuka
+        console.log('🔄 Force reloading master data...');
+        showLoadingModal('Memuat data item terbaru...');
+        
+        try {
+            await loadMasterData();
+            console.log('✅ Master data reloaded');
+            console.log('📦 Total items available:', masterDataCache.items.length);
+            
+            // Debug: Log beberapa item terbaru
+            if (masterDataCache.items.length > 0) {
+                console.log('📦 Latest items:', masterDataCache.items.slice(0, 3));
+            }
+        } catch (error) {
+            console.error('❌ Failed to load master data:', error);
+            showMessageModal('Error', 'Gagal memuat data item: ' + error.message, false);
+        } finally {
+            hideLoadingModal();
+        }
+        
         const form = document.getElementById('formBarangKeluar');
         const supplierSelect = document.getElementById('bk_supplier_id');
         const itemSelect = document.getElementById('bk_item_id');
         const qtyInput = document.getElementById('bk_qty');
 
         // Populate Supplier Filter
+        supplierSelect.innerHTML = '<option value="">-- Semua Klien --</option>';
         masterDataCache.suppliers.forEach(s => {
             supplierSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
         });
         
         // Event: Supplier Filter Change
         supplierSelect.onchange = function() {
+            console.log('🔍 Filter changed to supplier:', this.value);
             populateItemDropdown(this.value);
             updateStockInfo();
         };
@@ -275,11 +302,10 @@
                     form.reset();
                     
                     // Reload master data & history
-                    loadMasterData().then(() => {
-                        populateItemDropdown(supplierSelect.value);
-                        updateStockInfo();
-                        renderStaffHistory('OUT', 'riwayatKeluarPanel');
-                    });
+                    await loadMasterData();
+                    populateItemDropdown(supplierSelect.value);
+                    updateStockInfo();
+                    renderStaffHistory('OUT', 'riwayatKeluarPanel');
                 } else {
                     showMessageModal('❌ Gagal!', data.message, false);
                 }
@@ -295,5 +321,7 @@
 
         // Load history
         renderStaffHistory('OUT', 'riwayatKeluarPanel');
+        
+        console.log('✅ Barang Keluar initialized');
     }
 </script>

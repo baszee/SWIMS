@@ -1,7 +1,7 @@
 <?php
 // FILE: api/items.php
 // Fungsi: API CRUD untuk Data Master Barang/Item dan Stok
-// Versi: 2.2 - FIX: Logic filter item 'available' dan Autocomplete Search
+// Versi: 2.3 - FIX: Available items endpoint untuk barang keluar
 session_start();
 include('../config/db_config.php'); 
 
@@ -87,11 +87,12 @@ try {
             }
             
             // =====================================================================
-            // ENDPOINT: AVAILABLE ITEMS (action=available) - Digunakan oleh Barang Keluar (Dropdown)
+            // ENDPOINT: AVAILABLE ITEMS (action=available) - FIXED VERSION
+            // Digunakan oleh Barang Keluar untuk populate dropdown
             // =====================================================================
             elseif ($action === 'available') {
-                // FIX: Endpoint ini sekarang mengambil SEMUA item APPROVED tanpa filter Supplier
-                // Filtering Item berdasarkan Supplier dilakukan di sisi JS (pages/barang_keluar.php)
+                // FIX: Query ini harus mengambil SEMUA item yang APPROVED
+                // Tanpa peduli kapan item tersebut dibuat
                 
                 $sql = "
                     SELECT 
@@ -100,16 +101,24 @@ try {
                         i.name, 
                         i.unit, 
                         i.current_stock, 
-                        i.supplier_id, /* Pastikan supplier_id diambil untuk filtering di JS */
-                        s.name as supplier_name 
+                        i.supplier_id,
+                        s.name as supplier_name,
+                        i.created_at
                     FROM items i 
                     JOIN suppliers s ON i.supplier_id = s.id 
                     WHERE i.is_approved = TRUE
-                    ORDER BY i.name ASC
+                    ORDER BY i.created_at DESC, i.name ASC
                 ";
                 
                 $stmt = $pdo->query($sql);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Debug log
+                error_log("Available items count: " . count($items));
+                if (count($items) > 0) {
+                    error_log("Latest item: " . json_encode($items[0]));
+                }
+                
                 api_response(true, "Daftar item approved berhasil diambil.", $items);
             }
             
@@ -122,7 +131,7 @@ try {
                     FROM items i 
                     JOIN suppliers s ON i.supplier_id = s.id 
                     JOIN users u ON i.created_by_user_id = u.id 
-                    ORDER BY i.name ASC
+                    ORDER BY i.created_at DESC, i.name ASC
                 ");
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar semua item berhasil diambil.", $items);
@@ -160,6 +169,7 @@ try {
             $stmt->execute([$sku, $name, $unit, $supplier_id, $min_stock, $current_stock, $is_approved_status, $user_id]);
 
             api_response(true, $response_message, ['id' => $pdo->lastInsertId()], 201);
+            break;
             
         // UPDATE: Mengubah data Item
         case 'PUT':
@@ -196,6 +206,7 @@ try {
             $stmt->execute($params);
 
             api_response(true, "Data Item ID:{$id} berhasil diupdate.", null);
+            break;
 
         // DELETE: Item tidak dihapus
         case 'DELETE':
