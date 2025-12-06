@@ -199,6 +199,7 @@ function renderMenu(){
         buttons += `<button onclick="loadPage('supervisor')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('approval')">Approval Transaksi</button>`;
         buttons += `<button onclick="loadPage('approval_items')">Approval Item/Klien</button>`;
+        buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`; // ← NEW
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
     }
     
@@ -209,6 +210,7 @@ function renderMenu(){
     
     if (role === 'owner'){
         buttons += `<button onclick="loadPage('owner')">Dashboard</button>`;
+        buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`; // ← NEW
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
         buttons += `<button onclick="loadPage('owner_report')">Monitoring & Laporan</button>`;
     }
@@ -282,6 +284,7 @@ const ROLE_ALLOWED_PAGES = {
     'supervisor': ['supervisor'],
     'approval': ['supervisor'],
     'approval_items': ['supervisor'],
+    'history_transaksi': ['supervisor','owner'], // ← NEW
     'admin': ['admin'],
     'admin_users': ['admin'],
     'manage_items': ['admin'], 

@@ -38,6 +38,7 @@ session_start();
   <script src="js/transactions.js"></script>
   <script src="js/approval.js"></script>
   <script src="js/notes.js"></script> <!-- ← TAMBAHKAN INI -->
+  <script src="js/history_transaksi.js"></script>
   
   <script>
     // Inisialisasi aplikasi
