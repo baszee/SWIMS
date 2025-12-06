@@ -1,5 +1,5 @@
 <?php
-// FILE: api/notes.php
+// FILE: api/notes.php - FIXED VERSION
 // Fungsi: CRUD untuk Catatan Internal (Notes) antara Supervisor dan Owner.
 session_start();
 include('../config/db_config.php'); 
@@ -52,6 +52,7 @@ try {
             $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             api_response(true, "Daftar catatan internal berhasil diambil.", $notes);
+            break; // ← TAMBAHKAN
 
         // CREATE: Menambah Note baru
         case 'POST':
@@ -68,6 +69,7 @@ try {
             $stmt->execute([$title, $content, $user_id, $target_role]);
 
             api_response(true, "Catatan baru berhasil dipublikasikan.", ['id' => $pdo->lastInsertId()], 201);
+            break; // ← TAMBAHKAN
             
         // DELETE: Menghapus Note (hanya boleh dihapus oleh pembuat atau Admin/Owner)
         case 'DELETE':
@@ -86,6 +88,7 @@ try {
             }
 
             api_response(true, "Catatan ID:{$id} berhasil dihapus.", null);
+            break; // ← TAMBAHKAN
 
         default:
             api_response(false, "Method '{$method}' tidak diizinkan.", null, 405);
@@ -95,4 +98,4 @@ try {
     error_log("Database Error in notes.php: " . $e->getMessage());
     api_response(false, "Kesalahan server database. Cek log.", null, 500);
 }
-?>
+?> 

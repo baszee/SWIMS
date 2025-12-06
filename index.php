@@ -27,9 +27,8 @@ session_start();
   <!-- QR code lib (Untuk fitur Supervisor Notes) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- jsPDF untuk PDF Generator (TAMBAHKAN INI) -->
+  <!-- jsPDF untuk PDF Generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
 
   <!-- Load JavaScript Logic - URUTAN PENTING! -->
   <script src="js/app.js"></script>
@@ -38,9 +37,7 @@ session_start();
   <script src="js/dashboard.js"></script>
   <script src="js/transactions.js"></script>
   <script src="js/approval.js"></script>
-  <!-- notes.js dan reports.js tidak ada, jadi kita comment dulu -->
-  <!-- <script src="js/notes.js"></script> -->
-  <!-- <script src="js/reports.js"></script> -->
+  <script src="js/notes.js"></script> <!-- ← TAMBAHKAN INI -->
   
   <script>
     // Inisialisasi aplikasi

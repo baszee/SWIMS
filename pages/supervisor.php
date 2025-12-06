@@ -7,9 +7,8 @@
     <p class="small">Selamat datang, <b id="supervisorName"></b>. Gunakan menu untuk menyetujui transaksi dan data master baru.</p>
 </div>
 
-<!-- Statistik Dashboard (3 Kartu seperti referensi) -->
+<!-- Statistik Dashboard -->
 <div id="supervisorStats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom: 20px;">
-    <!-- Kartu Statistik akan dimuat oleh init_supervisor() -->
     <div class="card"><p style="text-align:center;">⏳ Memuat statistik...</p></div>
 </div>
 
@@ -29,7 +28,7 @@
     </div>
 </div>
 
-<!-- Ringkasan Aktivitas Terkini (Opsional) -->
+<!-- Tips Supervisor -->
 <div class="card" style="background:#f0f9ff; border-left:4px solid #3b82f6;">
     <h3 style="margin-top:0; color:#1e40af;">💡 Tips Supervisor</h3>
     <ul style="margin:0; padding-left:20px; color:#1e3a8a;">
@@ -45,29 +44,28 @@
     // INIT SUPERVISOR DASHBOARD
     // ========================================
     async function loadSupervisorDashboard() {
+        console.log('🚀 Init Supervisor Dashboard v2.0');
+        
         const user = currentUser();
         if (!user) {
+            console.error('❌ User not found!');
             loadPage('login');
             return;
         }
+        
+        console.log('✅ User found:', user);
         
         // Set nama supervisor
         const nameEl = document.getElementById('supervisorName');
         if (nameEl) {
             nameEl.textContent = user.username;
+            console.log('✅ Supervisor name set:', user.username);
+        } else {
+            console.error('❌ supervisorName element not found');
         }
         
         // Load statistik
         await loadSupervisorStats();
-    }
-    
-    // Auto-call when page loads
-    if (typeof window.init_supervisor === 'function') {
-        window.init_supervisor = loadSupervisorDashboard;
-    } else {
-        // Jika init_supervisor belum didefinisikan, define sekarang
-        window.init_supervisor = loadSupervisorDashboard;
-        loadSupervisorDashboard(); // Call langsung
     }
     
     // ========================================
@@ -75,23 +73,51 @@
     // ========================================
     async function loadSupervisorStats() {
         const statsDiv = document.getElementById('supervisorStats');
-        if (!statsDiv) return;
+        if (!statsDiv) {
+            console.error('❌ supervisorStats div not found!');
+            return;
+        }
         
-        statsDiv.innerHTML = '<div class="card"><p style="text-align:center;">Mengambil data...</p></div>';
+        console.log('📊 Loading supervisor stats...');
+        statsDiv.innerHTML = '<div class="card"><p style="text-align:center;">⏳ Mengambil data...</p></div>';
         
-        showLoadingModal('Mengambil statistik approval...');
+        showLoadingModal('Mengambil statistik...');
         
         try {
-            // Fetch semua data pending sekaligus
-            const [transRes, itemsRes, suppliersRes] = await Promise.all([
-                fetch('api/approval.php?action=transactions'),
-                fetch('api/approval.php?action=items'),
-                fetch('api/approval.php?action=suppliers')
-            ]);
+            console.log('🔄 Fetching approval data from APIs...');
             
+            // Fetch dengan timeout
+            const fetchWithTimeout = (url, timeout = 5000) => {
+                return Promise.race([
+                    fetch(url),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout')), timeout)
+                    )
+                ]);
+            };
+            
+            // Fetch semua data pending
+            console.log('📡 Fetching transactions...');
+            const transRes = await fetchWithTimeout('api/approval.php?action=transactions');
+            console.log('✅ Trans response:', transRes.status, transRes.ok);
+            
+            console.log('📡 Fetching items...');
+            const itemsRes = await fetchWithTimeout('api/approval.php?action=items');
+            console.log('✅ Items response:', itemsRes.status, itemsRes.ok);
+            
+            console.log('📡 Fetching suppliers...');
+            const suppliersRes = await fetchWithTimeout('api/approval.php?action=suppliers');
+            console.log('✅ Suppliers response:', suppliersRes.status, suppliersRes.ok);
+            
+            // Parse responses
             const transData = await transRes.json();
+            console.log('📦 Trans data:', transData);
+            
             const itemsData = await itemsRes.json();
+            console.log('📦 Items data:', itemsData);
+            
             const suppliersData = await suppliersRes.json();
+            console.log('📦 Suppliers data:', suppliersData);
             
             // Hitung statistik
             const pendingIn = transData.success ? transData.data.filter(t => t.type === 'IN').length : 0;
@@ -99,7 +125,13 @@
             const pendingMasters = (itemsData.success ? itemsData.data.length : 0) + 
                                    (suppliersData.success ? suppliersData.data.length : 0);
             
-            // Render kartu statistik (mirip referensi visual)
+            console.log('📊 Statistics calculated:', {
+                pendingIn,
+                pendingOut,
+                pendingMasters
+            });
+            
+            // Render kartu statistik
             statsDiv.innerHTML = `
                 <div class="stat-box" style="background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
                     <div class="stat-label">Pending Barang Masuk</div>
@@ -118,19 +150,32 @@
                 </div>
             `;
             
+            console.log('✅ Statistics rendered successfully!');
+            
         } catch (error) {
+            console.error('❌ Supervisor stats error:', error);
             statsDiv.innerHTML = `
                 <div class="card">
                     <p style="color:var(--danger);">❌ Error memuat statistik: ${error.message}</p>
-                    <p class="small">Pastikan API approval.php berfungsi dengan baik.</p>
+                    <p class="small">Pastikan:</p>
+                    <ul class="small">
+                        <li>WAMP/XAMPP sudah running</li>
+                        <li>File api/approval.php tersedia</li>
+                        <li>Database terkoneksi</li>
+                    </ul>
+                    <button class="btn primary btn-sm" onclick="loadSupervisorStats()">🔄 Coba Lagi</button>
                 </div>
             `;
-            console.error('Supervisor stats error:', error);
         } finally {
             hideLoadingModal();
         }
     }
     
-    // Expose function
+    // Expose functions
     window.loadSupervisorStats = loadSupervisorStats;
+    window.init_supervisor = loadSupervisorDashboard;
+    
+    // Auto-call when page loads
+    console.log('🚀 Auto-calling init_supervisor...');
+    loadSupervisorDashboard();
 </script>
