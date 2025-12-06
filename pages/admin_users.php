@@ -12,5 +12,3 @@
         <p>Memuat daftar pengguna...</p>
     </div>
 </div>
-<script src="js/app.js"></script>
-<script src="js/user_management.js"></script>

@@ -36,6 +36,7 @@ try {
             $stmt = $pdo->query("SELECT id, username, role, is_active, created_at FROM users ORDER BY created_at DESC");
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             api_response(true, "Daftar pengguna berhasil diambil.", $users);
+            break; // ← TAMBAHKAN INI
 
         // CREATE: Menambah User baru
         case 'POST':
@@ -62,6 +63,7 @@ try {
             $stmt->execute([$username, $hashed_password, $role]);
 
             api_response(true, "User '{$username}' dengan role {$role} berhasil ditambahkan.", ['id' => $pdo->lastInsertId()], 201);
+            break; // ← TAMBAHKAN INI
             
         // UPDATE: Mengubah data User (Role dan Status Aktif)
         case 'PUT':
@@ -93,6 +95,7 @@ try {
             $stmt->execute($params);
 
             api_response(true, "Data User ID:{$id} berhasil diupdate.", null);
+            break; // ← TAMBAHKAN INI
 
         // DELETE: Deactivate User
         case 'DELETE':
@@ -111,6 +114,7 @@ try {
             $stmt->execute([$id]);
 
             api_response(true, "User ID:{$id} berhasil di-nonaktifkan.", null);
+            break; // ← TAMBAHKAN INI
 
         default:
             api_response(false, "Method '{$method}' tidak diizinkan.", null, 405);

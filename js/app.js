@@ -31,7 +31,7 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;*
+            height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             display: flex; /* Default to flex, hidden via JS */
             justify-content: center;
@@ -209,7 +209,7 @@ function renderMenu(){
     if (role === 'admin'){
         buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('admin_users')">User Management</button>`; 
-        buttons += `<button onclick="loadPage('manage_items')">Manage Items</button>`; // Tambahkan ini jika belum ada
+        // TOMBOL MANAGE ITEMS DIHAPUS - BARIS INI SUDAH DIHAPUS
     }
     
     if (role === 'owner'){
@@ -381,9 +381,6 @@ window.showMessageModal = showMessageModal;
 window.showLoadingModal = showLoadingModal; 
 window.hideLoadingModal = hideLoadingModal; 
 window.loadMasterData = loadMasterData;
-
-// HAPUS SEMUA window.init_X dan window.helper_X yang sudah dipindahkan!
-// FUNGSI INI AKAN OTOMATIS TERDAFTAR KARENA FILE MODUL LAIN DIMUAT SETELAH INI.
 
 // Log untuk debugging
 console.log('SWIMS Core App JS Loaded and ready for modules. ✅');
