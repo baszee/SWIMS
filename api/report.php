@@ -1,7 +1,6 @@
 <?php
-// FILE: api/report.php
-// Fungsi: Menyediakan data statistik, monitoring, dan riwayat transaksi untuk Owner & Staff.
-// Versi: 2.1 - Adaptasi: recipients tabel dihapus, ditambah staff_history.
+// FILE: api/report.php - FIXED VERSION
+// Fungsi: Menyediakan data statistik, monitoring, dan riwayat transaksi untuk Owner, Supervisor & Staff.
 session_start();
 include('../config/db_config.php'); 
 
@@ -24,8 +23,8 @@ if (!isset($_SESSION['user'])) {
 $user_role = $_SESSION['user']['role'];
 $user_id = $_SESSION['user']['id'];
 
-// Owner dan Staff memiliki akses berbeda ke laporan
-$allowed_roles = ['owner', 'staff'];
+// Owner, Supervisor, dan Staff memiliki akses berbeda ke laporan
+$allowed_roles = ['owner', 'staff', 'supervisor'];
 if (!in_array($user_role, $allowed_roles)) {
     api_response(false, "Otorisasi ditolak.", null, 403);
 }
@@ -105,9 +104,9 @@ if ($method === 'GET') {
         }
         
         // =============================================================
-        // ENDPOINT OWNER REPORTS
+        // ENDPOINT SUPERVISOR & OWNER REPORTS
         // =============================================================
-        elseif ($user_role === 'owner') {
+        elseif ($user_role === 'owner' || $user_role === 'supervisor') {
 
             if ($action === 'summary') {
                 // Laporan 1: Ringkasan Statistik
@@ -149,7 +148,8 @@ if ($method === 'GET') {
                 api_response(true, "Laporan inventaris lengkap berhasil diambil.", $inventory);
                 
             } elseif ($action === 'history') {
-                // Laporan 3: Riwayat Transaksi Lengkap (Adaptasi untuk skema baru)
+                // Laporan 3: Riwayat Transaksi Lengkap
+                // FIXED: Supervisor sekarang boleh akses
                 $sql = "
                     SELECT 
                         t.id, t.transaction_code, t.type, t.quantity, t.note, t.status,
@@ -165,6 +165,7 @@ if ($method === 'GET') {
                     LEFT JOIN users u_app ON t.approved_by_user_id = u_app.id
                     LEFT JOIN suppliers s ON t.supplier_id = s.id
                     ORDER BY t.request_date DESC
+                    LIMIT 50
                 ";
                 $stmt = $pdo->query($sql);
                 $history = $stmt->fetchAll(PDO::FETCH_ASSOC);

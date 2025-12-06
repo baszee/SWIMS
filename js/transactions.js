@@ -1,7 +1,7 @@
 /**
  * =========================================================
- * TRANSACTIONS.JS - COMPLETE FIX VERSION 4.0
- * Fix: Duplikasi fungsi, memory leak, autocomplete sync
+ * TRANSACTIONS.JS - FIXED VERSION 5.0
+ * Fix: Item baru langsung masuk pending list
  * =========================================================
  */
 
@@ -101,7 +101,7 @@ function cleanupEventListeners(type) {
 // INIT: BARANG MASUK (FIXED)
 // ========================================
 function init_barang_masuk() {
-    console.log('🚀 Init Barang Masuk v4.0');
+    console.log('🚀 Init Barang Masuk v5.0 - FIXED');
     
     cleanupEventListeners('barangMasuk');
     
@@ -284,7 +284,7 @@ function init_barang_masuk() {
     document.addEventListener('click', handleDocumentClick);
     activeEventListeners.barangMasuk.push({ element: document, event: 'click', handler: handleDocumentClick });
     
-    // EVENT: Form Submit
+    // EVENT: Form Submit - FIXED LOGIC
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         
@@ -307,8 +307,8 @@ function init_barang_masuk() {
         showLoadingModal('Memproses...');
         
         try {
+            // CASE 1: Item existing (sudah dipilih dari dropdown)
             if (selectedItemId) {
-                // CASE 1: Item existing
                 const payload = {
                     type: 'IN',
                     item_id: selectedItemId,
@@ -333,56 +333,41 @@ function init_barang_masuk() {
                 } else {
                     showMessageModal('❌ Gagal!', data.message, false);
                 }
-            } else {
-                // CASE 2: Item baru
-                const itemPayload = {
+            } 
+            // CASE 2: Item baru (input manual)
+            else {
+                // Kirim data item baru sekaligus transaksi dalam satu request
+                const payload = {
+                    type: 'IN',
+                    supplier_id: selectedSupplierId,
                     sku: sku,
                     name: name,
                     unit: unit,
-                    supplier_id: selectedSupplierId,
-                    min_stock: 10,
-                    current_stock: 0
-                };
-                
-                const itemResponse = await fetch('api/items.php', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(itemPayload)
-                });
-                
-                const itemData = await itemResponse.json();
-                
-                if (!itemData.success) {
-                    showMessageModal('❌ Gagal!', 'Gagal daftar item: ' + itemData.message, false);
-                    return;
-                }
-                
-                const newItemId = itemData.data.id;
-                
-                const transPayload = {
-                    type: 'IN',
-                    item_id: newItemId,
                     quantity: qty,
-                    note: note,
-                    supplier_id: selectedSupplierId
+                    note: note
                 };
                 
-                const transResponse = await fetch('api/transactions.php', {
+                console.log('Sending new item payload:', payload);
+                
+                const response = await fetch('api/transactions.php', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(transPayload)
+                    body: JSON.stringify(payload)
                 });
                 
-                const transData = await transResponse.json();
+                const data = await response.json();
+                console.log('Response:', data);
                 
-                if (transData.success) {
-                    showMessageModal('✅ Sukses!', `Item "${name}" didaftarkan. Status: PENDING.`, false);
+                if (data.success) {
+                    showMessageModal('✅ Sukses!', data.message, false);
                     form.reset();
                     resetItemSelection(true);
-                    loadMasterData();
+                    
+                    // Reload master data dan history
+                    await loadMasterData();
                     renderStaffHistory('IN', 'riwayatMasukPanel');
                 } else {
-                    showMessageModal('⚠️ Warning', `Item OK tapi transaksi gagal: ${transData.message}`, false);
+                    showMessageModal('❌ Gagal!', data.message, false);
                 }
             }
             
@@ -398,14 +383,14 @@ function init_barang_masuk() {
     activeEventListeners.barangMasuk.push({ element: form, event: 'submit', handler: handleFormSubmit });
     
     renderStaffHistory('IN', 'riwayatMasukPanel');
-    console.log('✅ Barang Masuk initialized');
+    console.log('✅ Barang Masuk initialized v5.0');
 }
 
 // ========================================
-// INIT: BARANG KELUAR (FIXED)
+// INIT: BARANG KELUAR (NO CHANGES)
 // ========================================
 function init_barang_keluar() {
-    console.log('🚀 Init Barang Keluar v4.0');
+    console.log('🚀 Init Barang Keluar v5.0');
     
     cleanupEventListeners('barangKeluar');
     
@@ -531,7 +516,7 @@ function init_barang_keluar() {
     activeEventListeners.barangKeluar.push({ element: form, event: 'submit', handler: handleFormSubmit });
 
     renderStaffHistory('OUT', 'riwayatKeluarPanel');
-    console.log('✅ Barang Keluar initialized');
+    console.log('✅ Barang Keluar initialized v5.0');
 }
 
 // ========================================
@@ -554,4 +539,4 @@ window.init_barang_masuk = init_barang_masuk;
 window.init_barang_keluar = init_barang_keluar;
 window.init_request_item = init_request_item;
 
-console.log('✅ Transactions Module v4.0 loaded (FIXED)');
+console.log('✅ Transactions Module v5.0 loaded (COMPLETE FIX)');

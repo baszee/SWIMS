@@ -1,12 +1,12 @@
 /**
  * =========================================================
  * APP.JS - CORE MODULE (Utilities, Routing, Global State)
+ * Version: 2.0 - Fixed loadPage timing
  * =========================================================
  */
 
-// ---------- Modal Helpers (TETAP DI SINI) ----------
+// ---------- Modal Helpers ----------
 function showMessageModal(title, message, is_confirm = false, on_confirm = null) {
-    // Buat modal element
     let modal = document.getElementById('customModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -24,7 +24,6 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
         `;
         document.body.appendChild(modal);
 
-        // Tambahkan styling untuk modal (di-inline agar pasti terload)
         const modalStyle = `
         .modal-backdrop {
             position: fixed;
@@ -33,7 +32,7 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
-            display: flex; /* Default to flex, hidden via JS */
+            display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -53,7 +52,6 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
             justify-content: flex-end;
             gap: 8px;
         }
-        /* Styling untuk Autocomplete Dropdown - DIBIARKAN DI SINI KARENA DIPAKAI GLOBAL */
         .autocomplete-dropdown {
             position: absolute;
             z-index: 100;
@@ -139,8 +137,7 @@ function hideLoadingModal() {
     if (loading) loading.style.display = 'none';
 }
 
-
-// ---------- Storage helpers (TETAP DI SINI) ----------
+// ---------- Storage helpers ----------
 function storageGet(key){ 
     try { 
         return JSON.parse(localStorage.getItem(key)); 
@@ -153,14 +150,14 @@ function storageSet(key, val){
     localStorage.setItem(key, JSON.stringify(val)); 
 }
 
-// Global cache untuk data master (TETAP DI SINI)
+// Global cache untuk data master
 let masterDataCache = {
     suppliers: [],
     recipients: [], 
     items: []
 };
 
-// ---------- Auth helpers (TETAP DI SINI) ----------
+// ---------- Auth helpers ----------
 
 function currentUser(){ 
     return storageGet('swims_current_user'); 
@@ -191,7 +188,6 @@ function renderMenu(){
     const role = user.role;
     let buttons = '';
     
-    // Menu berdasarkan role
     if (role === 'staff'){
         buttons += `<button onclick="loadPage('staff')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('barang_masuk')">Barang Masuk</button>`;
@@ -208,8 +204,7 @@ function renderMenu(){
     
     if (role === 'admin'){
         buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('admin_users')">User Management</button>`; 
-        // TOMBOL MANAGE ITEMS DIHAPUS - BARIS INI SUDAH DIHAPUS
+        buttons += `<button onclick="loadPage('admin_users')">User Management</button>`;
     }
     
     if (role === 'owner'){
@@ -222,7 +217,6 @@ function renderMenu(){
     menu.innerHTML = buttons;
 }
 
-// Fungsi untuk memeriksa status session di server
 async function checkSessionAndRender(){
     try {
         const response = await fetch('api/auth.php?action=check_session');
@@ -253,12 +247,11 @@ async function checkSessionAndRender(){
     }
 }
 
-// Fungsi Logout
 function logout(){
     showMessageModal(
         'Konfirmasi Logout', 
         'Apakah Anda yakin ingin keluar dari SWIMS?', 
-        true, // is_confirm = true
+        true,
         async () => {
             try {
                 const response = await fetch('api/auth.php?action=logout');
@@ -278,7 +271,8 @@ function logout(){
     );
 }
 
-// ---------- Page Access Control & Loading (TETAP DI SINI) ----------
+// ---------- Page Access Control & Loading ----------
+
 const ROLE_ALLOWED_PAGES = {
     'login': ['guest','staff','supervisor','admin','owner'],
     'staff': ['staff'],
@@ -304,8 +298,11 @@ function roleLanding(role){
     return 'login';
 }
 
+// ---------- FIXED: loadPage with better timing ----------
 function loadPage(page){
     window.location.hash = page;
+    
+    console.log(`📄 Loading page: ${page}`);
     
     fetch(`pages/${page}.php`) 
       .then(r => {
@@ -315,12 +312,26 @@ function loadPage(page){
       .then(html => {
         document.getElementById('content').innerHTML = html;
         
-        // Panggil fungsi init_ jika ada, yang sudah didefinisikan di file modul
-        if (typeof window['init_'+page] === 'function') {
-            window['init_'+page]();
-        }
+        console.log(`✅ Page HTML loaded: ${page}`);
+        
+        // PENTING: Wait for inline scripts to execute
+        setTimeout(() => {
+            const initFuncName = 'init_' + page;
+            console.log(`🔍 Looking for ${initFuncName} function...`);
+            console.log(`   → Type: ${typeof window[initFuncName]}`);
+            console.log(`   → Function exists: ${window[initFuncName] ? 'YES' : 'NO'}`);
+            
+            // Panggil fungsi init_ jika ada
+            if (typeof window[initFuncName] === 'function') {
+                console.log(`✅ Calling ${initFuncName}...`);
+                window[initFuncName]();
+            } else {
+                console.log(`ℹ️ No ${initFuncName} function (page may have inline script that auto-runs)`);
+            }
+        }, 150); // Increased delay for inline scripts to execute
       })
       .catch(err => {
+        console.error('❌ Page load error:', err);
         document.getElementById('content').innerHTML = `
           <div class="card">
             <h3 style="color: var(--danger);">❌ Error Loading Page</h3>
@@ -332,15 +343,14 @@ function loadPage(page){
       });
 }
 
-// ---------- API Master Data Loader (TETAP DI SINI) ----------
+// ---------- API Master Data Loader ----------
 
 async function loadMasterData() {
     showLoadingModal('Mengambil data master (Supplier & Item)...');
     try {
-        // FIX: Hapus recipients dari promise.all karena sudah dihapus dari skema
         const [supplierRes, itemRes] = await Promise.all([
             fetch('api/suppliers.php?action=list'),
-            fetch('api/items.php?action=available') // Hanya item yang sudah disetujui
+            fetch('api/items.php?action=available')
         ]);
 
         const supplierData = await supplierRes.json();
@@ -366,7 +376,7 @@ async function loadMasterData() {
     }
 }
 
-// ---------- Expose to global scope (Finalisasi) ----------
+// ---------- Expose to global scope ----------
 
 window.loadPage = loadPage;
 window.renderUserBar = renderUserBar;
@@ -382,5 +392,4 @@ window.showLoadingModal = showLoadingModal;
 window.hideLoadingModal = hideLoadingModal; 
 window.loadMasterData = loadMasterData;
 
-// Log untuk debugging
 console.log('SWIMS Core App JS Loaded and ready for modules. ✅');

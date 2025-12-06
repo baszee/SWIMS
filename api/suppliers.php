@@ -1,7 +1,6 @@
 <?php
-// FILE: api/suppliers.php
+// FILE: api/suppliers.php - FIXED VERSION
 // Fungsi: API CRUD untuk Data Master Supplier (Klien/PT Pemilik Barang)
-// Versi: 2.3 - FIX Critical: Missing return/exit after api_response
 session_start();
 include('../config/db_config.php'); 
 
@@ -63,25 +62,25 @@ try {
                 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
                 api_response(true, "Riwayat request supplier berhasil diambil.", $requests);
-                // ↑ exit() sudah dipanggil di dalam api_response()
             }
 
             // ---------------------------------------------------
             // Endpoint 2: Daftar Supplier Aktif (action=list) - untuk dropdown
             // ---------------------------------------------------
-            if ($action === 'list') {
+            elseif ($action === 'list') {
                 $stmt = $pdo->query("SELECT id, name FROM suppliers WHERE is_active = TRUE ORDER BY name ASC");
                 $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar supplier berhasil diambil.", $suppliers);
-                // ↑ exit() sudah dipanggil di dalam api_response()
             }
             
             // ---------------------------------------------------
             // Endpoint 3: GET umum (tanpa action) - tampilkan semua data
             // ---------------------------------------------------
-            $stmt = $pdo->query("SELECT * FROM suppliers ORDER BY name ASC");
-            $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            api_response(true, "Data supplier berhasil diambil.", $suppliers);
+            else {
+                $stmt = $pdo->query("SELECT * FROM suppliers ORDER BY name ASC");
+                $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                api_response(true, "Data supplier berhasil diambil.", $suppliers);
+            }
             break; 
 
         // CREATE: Menambah Supplier baru
@@ -92,26 +91,52 @@ try {
             }
 
             $data = json_decode(file_get_contents("php://input"), true);
+            
+            // LOG untuk debugging
+            error_log("Received POST data: " . json_encode($data));
+            error_log("User ID: " . $user_id);
+            error_log("User Role: " . $user_role);
+            
             $name = trim($data['name'] ?? '');
-            $contact_person = $data['contact_person'] ?? '';
-            $phone = $data['phone'] ?? '';
-            $address = $data['address'] ?? '';
+            $contact_person = trim($data['contact_person'] ?? '');
+            $phone = trim($data['phone'] ?? '');
+            $address = trim($data['address'] ?? '');
 
             if (empty($name)) {
                 api_response(false, "Nama Supplier wajib diisi.", null, 400);
             }
             
+            // Cek duplikat nama supplier
+            $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM suppliers WHERE name = ?");
+            $stmt_check->execute([$name]);
+            if ($stmt_check->fetchColumn() > 0) {
+                api_response(false, "Supplier dengan nama '{$name}' sudah terdaftar.", null, 409);
+            }
+            
             // Logika Persetujuan Otomatis:
             // Jika Admin, langsung TRUE. Jika Staff, PENDING (FALSE).
-            $is_active_status = ($user_role === 'admin') ? TRUE : FALSE;
+            $is_active_status = ($user_role === 'admin') ? 1 : 0;
             $response_message = ($user_role === 'admin') 
                 ? "Supplier '{$name}' berhasil ditambahkan dan langsung disetujui." 
                 : "Permintaan Supplier '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
 
-            $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, address, is_active, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$name, $contact_person, $phone, $address, $is_active_status, $user_id]);
-
-            api_response(true, $response_message, ['id' => $pdo->lastInsertId()], 201);
+            try {
+                $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, address, is_active, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)");
+                $result = $stmt->execute([$name, $contact_person, $phone, $address, $is_active_status, $user_id]);
+                
+                if (!$result) {
+                    error_log("Insert failed: " . json_encode($stmt->errorInfo()));
+                    api_response(false, "Gagal menyimpan ke database.", null, 500);
+                }
+                
+                $new_id = $pdo->lastInsertId();
+                error_log("Supplier inserted successfully with ID: " . $new_id);
+                
+                api_response(true, $response_message, ['id' => $new_id], 201);
+            } catch (PDOException $e) {
+                error_log("Database error: " . $e->getMessage());
+                api_response(false, "Error database: " . $e->getMessage(), null, 500);
+            }
             break;
             
         // UPDATE: Mengubah data Supplier
@@ -170,6 +195,6 @@ try {
 } catch (\PDOException $e) {
     // Tangani error database
     error_log("Database Error in suppliers.php: " . $e->getMessage());
-    api_response(false, "Kesalahan server database. Cek log.", null, 500);
+    api_response(false, "Kesalahan server database: " . $e->getMessage(), null, 500);
 }
 ?>

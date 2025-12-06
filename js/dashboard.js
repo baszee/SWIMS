@@ -1,6 +1,6 @@
 /**
  * =========================================================
- * DASHBOARD.JS - DASHBOARD MODULE
+ * DASHBOARD.JS - DASHBOARD MODULE - FIXED VERSION
  * Menangani logika pemuatan data dan rendering dashboard
  * untuk semua peran (Staff, Supervisor, Admin, Owner).
  * =========================================================
@@ -8,6 +8,7 @@
 
 /* init_staff - Dashboard Staff */
 function init_staff(){
+    console.log('📊 Init Staff Dashboard');
     // Memuat Master Data sebelum memuat Dashboard
     loadMasterData().then(loadStaffDashboard); 
 }
@@ -65,16 +66,38 @@ async function loadStaffDashboard() {
 
 
 /* init_supervisor - Dashboard Supervisor */
-// NOTE: Logika init_supervisor sudah ada di pages/supervisor.php
-// Fungsi ini hanya sebagai fallback jika dipanggil langsung
+// NOTE: Sekarang ini hanya fallback
+// Actual implementation ada di pages/supervisor.php
 function init_supervisor(){
-    console.log('Init supervisor called from dashboard.js');
-    // Actual init ada di pages/supervisor.php sebagai window.init_supervisor
+    console.log('📊 Init Supervisor Dashboard (fallback from dashboard.js)');
+    
+    // Check if the actual init exists in the page
+    const supervisorPage = document.querySelector('#supervisorStats');
+    if (!supervisorPage) {
+        console.error('❌ Supervisor stats div not found!');
+        console.log('   → Page might not be loaded yet. Waiting for page script...');
+        return;
+    }
+    
+    console.log('✅ Supervisor stats div found');
+    console.log('🔍 Checking for loadSupervisorStats function...');
+    console.log('   → Type:', typeof window.loadSupervisorStats);
+    console.log('   → Available:', window.loadSupervisorStats ? 'YES' : 'NO');
+    
+    // If page-level init didn't run, try to load stats
+    if (typeof window.loadSupervisorStats === 'function') {
+        console.log('✅ Found loadSupervisorStats, calling it...');
+        window.loadSupervisorStats();
+    } else {
+        console.warn('⚠️ loadSupervisorStats function not found!');
+        console.log('   → This is OK if page script will initialize it');
+        console.log('   → Waiting for pages/supervisor.php script to load...');
+    }
 }
 
 /* init_admin - Dashboard Admin */
 function init_admin(){
-    console.log('Init admin dashboard called');
+    console.log('📊 Init Admin Dashboard');
     loadAdminDashboard();
 }
 
@@ -232,6 +255,7 @@ async function loadAdminDashboard() {
 
 /* init_owner - Dashboard Owner */
 function init_owner(){
+    console.log('📊 Init Owner Dashboard');
     if(typeof loadOwnerDashboard === 'function') {
         loadOwnerDashboard();
     }
@@ -245,4 +269,10 @@ window.init_admin = init_admin;
 window.loadAdminDashboard = loadAdminDashboard;
 window.init_owner = init_owner;
 
-console.log('Dashboard Module loaded ✅');
+console.log('✅ Dashboard Module loaded');
+console.log('   Exposed functions:', {
+    init_staff: typeof window.init_staff,
+    init_supervisor: typeof window.init_supervisor,
+    init_admin: typeof window.init_admin,
+    init_owner: typeof window.init_owner
+});
