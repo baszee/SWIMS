@@ -198,7 +198,7 @@ function renderMenu(){
     if (role === 'supervisor'){
         buttons += `<button onclick="loadPage('supervisor')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('approval')">Approval Transaksi</button>`;
-        buttons += `<button onclick="loadPage('approval_items')">Approval Item/Klien</button>`;
+        buttons += `<button onclick="loadPage('approval_items')">Approval Supplier/Klien</button>`;
         buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`; // ← NEW
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
     }
