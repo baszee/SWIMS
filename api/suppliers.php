@@ -1,148 +1,194 @@
 <?php
-// FILE: api/suppliers.php - FIXED VERSION
-// Fungsi: API CRUD untuk Data Master Supplier (Klien/PT Pemilik Barang)
+// ============================================================================
+// FILE: api/suppliers.php - SUPER SIMPLE VERSION
+// ============================================================================
+
 session_start();
 include('../config/db_config.php'); 
 
 header('Content-Type: application/json');
 
-// Helper untuk respons
+// Simple logging function
+function writeLog($message) {
+    $logFile = '../logs/supplier_requests.log';
+    $logDir = '../logs';
+    
+    if (!is_dir($logDir)) {
+        mkdir($logDir, 0777, true);
+    }
+    
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+}
+
 function api_response($success, $message, $data = null, $http_code = 200) {
     http_response_code($http_code);
     echo json_encode(['success' => $success, 'message' => $message, 'data' => $data]);
     exit();
 }
 
-// ----------------------------------------------------------------------
-// KEAMANAN: Memeriksa Session dan Otorisasi Sisi Server
-// ----------------------------------------------------------------------
+// Log request
+$method = $_SERVER['REQUEST_METHOD'];
+$user_info = isset($_SESSION['user']) ? $_SESSION['user']['username'] : 'NO SESSION';
+writeLog("$method request from $user_info");
 
+// ============================================================================
+// SECURITY CHECK
+// ============================================================================
 if (!isset($_SESSION['user'])) {
+    writeLog("ERROR: No session found");
     api_response(false, "Akses ditolak. Silakan login.", null, 401);
 }
 
 $user_role = $_SESSION['user']['role'];
 $user_id = $_SESSION['user']['id'];
 
-// Hanya Admin dan Staff yang memiliki hak akses penuh ke Supplier/Item/Recipient
 $allowed_roles = ['admin', 'staff', 'supervisor', 'owner'];
 if (!in_array($user_role, $allowed_roles)) {
-    api_response(false, "Otorisasi ditolak. Role Anda tidak diizinkan mengakses resource ini.", null, 403);
+    writeLog("ERROR: Unauthorized role: $user_role");
+    api_response(false, "Otorisasi ditolak.", null, 403);
 }
 
-// ----------------------------------------------------------------------
-// PENANGANAN REQUEST
-// ----------------------------------------------------------------------
+writeLog("User authenticated - ID: $user_id, Role: $user_role");
 
-$method = $_SERVER['REQUEST_METHOD'];
+// ============================================================================
+// REQUEST HANDLER
+// ============================================================================
 
 try {
-    
     switch ($method) {
-        // READ: Mengambil daftar Supplier
+        // ====================================================================
+        // GET
+        // ====================================================================
         case 'GET':
             $action = $_GET['action'] ?? '';
+            writeLog("GET action: $action");
             
-            // ---------------------------------------------------
-            // Endpoint 1: Riwayat Request Staff Sendiri (action=my_requests)
-            // ---------------------------------------------------
             if ($action === 'my_requests') {
-                // Hanya Staff yang boleh melihat requestnya sendiri
                 if ($user_role !== 'staff') {
                     api_response(false, "Akses hanya untuk Staff.", null, 403);
                 }
                 
-                // Ambil request supplier berdasarkan user_id yang sedang login
                 $sql = "SELECT id, name, contact_person, phone, address, is_active, created_at 
                         FROM suppliers 
                         WHERE created_by_user_id = ? 
                         ORDER BY created_at DESC";
+                        
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([$user_id]);
                 $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 
+                writeLog("Found " . count($requests) . " requests for user $user_id");
                 api_response(true, "Riwayat request supplier berhasil diambil.", $requests);
-            }
-
-            // ---------------------------------------------------
-            // Endpoint 2: Daftar Supplier Aktif (action=list) - untuk dropdown
-            // ---------------------------------------------------
-            elseif ($action === 'list') {
+                
+            } elseif ($action === 'list') {
                 $stmt = $pdo->query("SELECT id, name FROM suppliers WHERE is_active = TRUE ORDER BY name ASC");
                 $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Daftar supplier berhasil diambil.", $suppliers);
-            }
-            
-            // ---------------------------------------------------
-            // Endpoint 3: GET umum (tanpa action) - tampilkan semua data
-            // ---------------------------------------------------
-            else {
+                
+            } else {
                 $stmt = $pdo->query("SELECT * FROM suppliers ORDER BY name ASC");
                 $suppliers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 api_response(true, "Data supplier berhasil diambil.", $suppliers);
             }
-            break; 
+            break;
 
-        // CREATE: Menambah Supplier baru
+        // ====================================================================
+        // POST - CREATE NEW SUPPLIER
+        // ====================================================================
         case 'POST':
-            // Hanya Admin/Staff yang bisa mengajukan Supplier baru
+            writeLog("POST: Starting creation process");
+            
+            // Check authorization
             if ($user_role !== 'admin' && $user_role !== 'staff') {
+                writeLog("POST ERROR: Unauthorized role: $user_role");
                 api_response(false, "Anda tidak memiliki hak untuk menambahkan supplier.", null, 403);
             }
 
-            $data = json_decode(file_get_contents("php://input"), true);
+            // Read raw input
+            $raw_input = file_get_contents("php://input");
+            writeLog("POST: Raw input = " . $raw_input);
             
-            // LOG untuk debugging
-            error_log("Received POST data: " . json_encode($data));
-            error_log("User ID: " . $user_id);
-            error_log("User Role: " . $user_role);
+            // Parse JSON
+            $data = json_decode($raw_input, true);
             
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                writeLog("POST ERROR: JSON decode error: " . json_last_error_msg());
+                api_response(false, "Invalid JSON: " . json_last_error_msg(), null, 400);
+            }
+            
+            writeLog("POST: Decoded data = " . json_encode($data));
+            
+            // Extract data
             $name = trim($data['name'] ?? '');
             $contact_person = trim($data['contact_person'] ?? '');
             $phone = trim($data['phone'] ?? '');
             $address = trim($data['address'] ?? '');
 
+            writeLog("POST: Name='$name', Contact='$contact_person'");
+
+            // Validate
             if (empty($name)) {
+                writeLog("POST ERROR: Empty name");
                 api_response(false, "Nama Supplier wajib diisi.", null, 400);
             }
             
-            // Cek duplikat nama supplier
+            // Check duplicate
             $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM suppliers WHERE name = ?");
             $stmt_check->execute([$name]);
-            if ($stmt_check->fetchColumn() > 0) {
+            $count = $stmt_check->fetchColumn();
+            
+            writeLog("POST: Duplicate check count = $count");
+            
+            if ($count > 0) {
+                writeLog("POST ERROR: Duplicate name");
                 api_response(false, "Supplier dengan nama '{$name}' sudah terdaftar.", null, 409);
             }
             
-            // Logika Persetujuan Otomatis:
-            // Jika Admin, langsung TRUE. Jika Staff, PENDING (FALSE).
-            $is_active_status = ($user_role === 'admin') ? 1 : 0;
-            $response_message = ($user_role === 'admin') 
+            // Set approval status
+            $is_active = ($user_role === 'admin') ? 1 : 0;
+            $message = ($user_role === 'admin') 
                 ? "Supplier '{$name}' berhasil ditambahkan dan langsung disetujui." 
                 : "Permintaan Supplier '{$name}' berhasil diajukan dan menanti persetujuan Supervisor.";
 
+            writeLog("POST: is_active=$is_active, user_id=$user_id");
+
+            // Insert to database
             try {
-                $stmt = $pdo->prepare("INSERT INTO suppliers (name, contact_person, phone, address, is_active, created_by_user_id) VALUES (?, ?, ?, ?, ?, ?)");
-                $result = $stmt->execute([$name, $contact_person, $phone, $address, $is_active_status, $user_id]);
+                $sql = "INSERT INTO suppliers (name, contact_person, phone, address, is_active, created_by_user_id) 
+                        VALUES (?, ?, ?, ?, ?, ?)";
+                        
+                $stmt = $pdo->prepare($sql);
+                $result = $stmt->execute([$name, $contact_person, $phone, $address, $is_active, $user_id]);
                 
                 if (!$result) {
-                    error_log("Insert failed: " . json_encode($stmt->errorInfo()));
-                    api_response(false, "Gagal menyimpan ke database.", null, 500);
+                    $error = $stmt->errorInfo();
+                    writeLog("POST ERROR: SQL failed - " . json_encode($error));
+                    api_response(false, "Gagal menyimpan: " . $error[2], null, 500);
                 }
                 
                 $new_id = $pdo->lastInsertId();
-                error_log("Supplier inserted successfully with ID: " . $new_id);
+                writeLog("POST SUCCESS: New supplier ID = $new_id");
                 
-                api_response(true, $response_message, ['id' => $new_id], 201);
+                // Verify
+                $verify = $pdo->prepare("SELECT * FROM suppliers WHERE id = ?");
+                $verify->execute([$new_id]);
+                $inserted = $verify->fetch(PDO::FETCH_ASSOC);
+                writeLog("POST: Verified insertion = " . json_encode($inserted));
+                
+                api_response(true, $message, ['id' => $new_id, 'data' => $inserted], 201);
+                
             } catch (PDOException $e) {
-                error_log("Database error: " . $e->getMessage());
-                api_response(false, "Error database: " . $e->getMessage(), null, 500);
+                writeLog("POST ERROR: PDO Exception - " . $e->getMessage());
+                api_response(false, "Database error: " . $e->getMessage(), null, 500);
             }
             break;
             
-        // UPDATE: Mengubah data Supplier
+        // ====================================================================
+        // PUT/PATCH
+        // ====================================================================
         case 'PUT':
         case 'PATCH':
-            // Hanya Admin/Supervisor yang bisa mengedit
             if ($user_role !== 'admin' && $user_role !== 'supervisor') {
                 api_response(false, "Anda tidak memiliki hak untuk mengubah data supplier.", null, 403);
             }
@@ -153,48 +199,47 @@ try {
             $contact_person = $data['contact_person'] ?? '';
             $phone = $data['phone'] ?? '';
             $address = $data['address'] ?? '';
-            $is_active = $data['is_active'] ?? null; 
+            $is_active = $data['is_active'] ?? null;
 
             if (!$id || empty($name)) {
                 api_response(false, "ID dan Nama Supplier wajib diisi.", null, 400);
             }
 
             $sql = "UPDATE suppliers SET name = ?, contact_person = ?, phone = ?, address = ?, is_active = ? WHERE id = ?";
-            $params = [$name, $contact_person, $phone, $address, $is_active, $id];
-
             $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
+            $stmt->execute([$name, $contact_person, $phone, $address, $is_active, $id]);
 
             api_response(true, "Data Supplier ID:{$id} berhasil diupdate.", null);
             break;
 
-        // DELETE: Menghapus (Deactivate) Supplier
+        // ====================================================================
+        // DELETE
+        // ====================================================================
         case 'DELETE':
-            // Hanya Admin yang bisa menghapus
             if ($user_role !== 'admin') {
                 api_response(false, "Anda tidak memiliki hak untuk menghapus supplier.", null, 403);
             }
             
-            // Ambil ID dari query string
             $id = $_GET['id'] ?? null;
             if (!$id) {
                 api_response(false, "ID Supplier wajib diisi untuk menghapus.", null, 400);
             }
             
-            // Praktik terbaik adalah DEACTIVATE, bukan DELETE permanen
             $stmt = $pdo->prepare("UPDATE suppliers SET is_active = FALSE WHERE id = ?");
             $stmt->execute([$id]);
 
-            api_response(true, "Supplier ID:{$id} berhasil di-deactivate (dihapus logis).", null);
+            api_response(true, "Supplier ID:{$id} berhasil di-deactivate.", null);
             break;
 
         default:
             api_response(false, "Method '{$method}' tidak diizinkan.", null, 405);
     }
 
-} catch (\PDOException $e) {
-    // Tangani error database
-    error_log("Database Error in suppliers.php: " . $e->getMessage());
-    api_response(false, "Kesalahan server database: " . $e->getMessage(), null, 500);
+} catch (PDOException $e) {
+    writeLog("ERROR: Database error - " . $e->getMessage());
+    api_response(false, "Kesalahan database: " . $e->getMessage(), null, 500);
+} catch (Exception $e) {
+    writeLog("ERROR: General error - " . $e->getMessage());
+    api_response(false, "Error: " . $e->getMessage(), null, 500);
 }
 ?>

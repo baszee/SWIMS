@@ -1,0 +1,23 @@
+[2025-12-07 07:24:03] GET request from staff1
+[2025-12-07 07:24:03] User authenticated - ID: 2, Role: staff
+[2025-12-07 07:24:03] GET action: my_requests
+[2025-12-07 07:24:03] Found 3 requests for user 2
+[2025-12-07 07:24:12] GET request from staff1
+[2025-12-07 07:24:12] User authenticated - ID: 2, Role: staff
+[2025-12-07 07:24:12] GET action: my_requests
+[2025-12-07 07:24:12] Found 3 requests for user 2
+[2025-12-07 07:24:50] GET request from staff1
+[2025-12-07 07:24:50] User authenticated - ID: 2, Role: staff
+[2025-12-07 07:24:50] GET action: my_requests
+[2025-12-07 07:24:50] Found 3 requests for user 2
+[2025-12-07 07:25:28] GET request from staff1
+[2025-12-07 07:25:28] User authenticated - ID: 2, Role: staff
+[2025-12-07 07:25:28] GET action: list
+[2025-12-07 07:25:48] GET request from staff1
+[2025-12-07 07:25:48] User authenticated - ID: 2, Role: staff
+[2025-12-07 07:25:48] GET action: my_requests
+[2025-12-07 07:25:48] Found 3 requests for user 2
+[2025-12-07 07:26:24] GET request from staff1
+[2025-12-07 07:26:24] User authenticated - ID: 2, Role: staff
+[2025-12-07 07:26:24] GET action: my_requests
+[2025-12-07 07:26:24] Found 3 requests for user 2

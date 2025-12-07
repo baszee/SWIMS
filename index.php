@@ -37,8 +37,11 @@ session_start();
   <script src="js/dashboard.js"></script>
   <script src="js/transactions.js"></script>
   <script src="js/approval.js"></script>
-  <script src="js/notes.js"></script> <!-- ← TAMBAHKAN INI -->
+  <script src="js/notes.js"></script>
   <script src="js/history_transaksi.js"></script>
+  
+  <!-- ⭐ TAMBAHKAN INI - Request Item Module -->
+  <script src="js/request_item.js"></script>
   
   <script>
     // Inisialisasi aplikasi
