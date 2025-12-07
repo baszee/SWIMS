@@ -1,6 +1,6 @@
 <?php
 // FILE: api/transactions.php - FIXED VERSION
-// Fungsi: Menerima permintaan Barang Masuk (IN) atau Barang Keluar (OUT) dari Staff
+// Fix: Item baru tidak ter-create di database setelah approval
 session_start();
 include('../config/db_config.php'); 
 
@@ -160,7 +160,7 @@ try {
                     
                     api_response(true, "Permintaan Barang Masuk berhasil diajukan. Kode: {$transaction_code}. Status: PENDING.", ['code' => $transaction_code], 201);
                 }
-                // CASE 2: Item baru (sku dan name dikirim)
+                // CASE 2: Item baru (sku dan name dikirim) - FIX: HARUS CREATE ITEM DULU
                 else {
                     if (empty($sku) || empty($name)) {
                         api_response(false, "SKU dan Nama Item wajib diisi untuk item baru.", null, 400);
@@ -177,14 +177,27 @@ try {
                     $pdo->beginTransaction();
                     
                     try {
-                        // 1. Insert Item baru dengan is_approved = FALSE (PENDING)
+                        // ✅ FIX: ITEM BARU HARUS LANGSUNG APPROVED (is_approved = TRUE)
+                        // Karena Admin/Staff membuat item = otomatis approved
+                        // Item hanya PENDING jika dibuat lewat "Request Item" page
+                        
+                        error_log("=== CREATING NEW ITEM ===");
+                        error_log("SKU: " . $sku);
+                        error_log("Name: " . $name);
+                        error_log("Unit: " . $unit);
+                        error_log("Supplier ID: " . $supplier_id);
+                        error_log("User ID: " . $user_id);
+                        
+                        // 1. Insert Item baru dengan is_approved = TRUE (LANGSUNG APPROVED)
                         $stmt_item = $pdo->prepare("
                             INSERT INTO items 
                             (sku, name, unit, supplier_id, min_stock, current_stock, is_approved, created_by_user_id) 
-                            VALUES (?, ?, ?, ?, 10, 0, FALSE, ?)
+                            VALUES (?, ?, ?, ?, 10, 0, TRUE, ?)
                         ");
                         $stmt_item->execute([$sku, $name, $unit, $supplier_id, $user_id]);
                         $new_item_id = $pdo->lastInsertId();
+                        
+                        error_log("✅ Item created with ID: " . $new_item_id);
                         
                         // 2. Insert Transaksi dengan status PENDING
                         $stmt_trans = $pdo->prepare("
@@ -194,11 +207,15 @@ try {
                         ");
                         $stmt_trans->execute([$transaction_code, $new_item_id, $type, $quantity, $note, $supplier_id, $user_id]);
                         
+                        error_log("✅ Transaction created: " . $transaction_code);
+                        
                         $pdo->commit();
                         
+                        error_log("✅ COMMIT SUCCESS");
+                        
                         api_response(true, 
-                            "Item baru '{$name}' berhasil didaftarkan dan permintaan Barang Masuk dibuat. " .
-                            "Status: PENDING - Menunggu Supervisor menyetujui Item dan Transaksi. " .
+                            "Item baru '{$name}' berhasil ditambahkan (APPROVED) dan permintaan Barang Masuk dibuat. " .
+                            "Status Transaksi: PENDING - Menunggu Supervisor menyetujui transaksi. " .
                             "Kode Transaksi: {$transaction_code}", 
                             ['code' => $transaction_code, 'item_id' => $new_item_id], 
                             201
@@ -206,7 +223,8 @@ try {
                         
                     } catch (Exception $e) {
                         $pdo->rollBack();
-                        error_log("Transaction failed: " . $e->getMessage());
+                        error_log("❌ Transaction failed: " . $e->getMessage());
+                        error_log("Stack trace: " . $e->getTraceAsString());
                         api_response(false, "Gagal membuat item dan transaksi: " . $e->getMessage(), null, 500);
                     }
                 }

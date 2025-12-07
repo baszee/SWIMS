@@ -5,6 +5,13 @@
     </h2>
   </div>
   
+  <!-- DEBUG INFO PANEL -->
+  <div id="debugInfo" class="card" style="background:#fff3cd; border-color:#ffc107; margin-bottom:15px; display:none;">
+    <h4 style="margin-top:0; color:#856404;">🔍 Debug Info</h4>
+    <pre id="debugContent" style="background:#fff; padding:10px; border-radius:4px; font-size:0.85rem; overflow:auto; max-height:200px;"></pre>
+    <button class="btn btn-sm" onclick="document.getElementById('debugInfo').style.display='none'">Tutup Debug</button>
+  </div>
+  
   <form id="formBarangKeluar">
     <!-- Dropdown Supplier (Filter) -->
     <label>Filter Item Berdasarkan Klien/Supplier (Opsional)</label>
@@ -19,8 +26,8 @@
         <option value="">-- Pilih Item --</option>
         <!-- Options dimuat dan difilter oleh JS -->
     </select>
-    <div id="itemStockInfo" class="card" style="margin-top: 8px; padding: 10px; background: #f0f9ff; border-color: #3b82f6; display:none;">
-        <p class="small" style="margin:0; color:#1e3a8a;" id="stockText"></p>
+    <div id="itemStockInfo" class="card" style="margin-top: 8px; padding: 10px; background: #f0f9ff; border-color: #3b82f6;">
+        <p class="small" style="margin:0; color:#1e3a8a;" id="stockText">Pilih item untuk melihat stok</p>
     </div>
     
     <label>Jumlah <span style="color:red;">*</span></label>
@@ -38,6 +45,7 @@
     <textarea id="bk_note" rows="3" placeholder="Opsional: alasan pengambilan barang..."></textarea>
     
     <button class="btn primary" type="submit" id="submitBtn">Request Barang Keluar</button>
+    <button class="btn btn-sm" type="button" onclick="showDebugInfo()" style="margin-left:10px;">🔍 Show Debug Info</button>
   </form>
   
   <div class="card" style="margin-top:16px;background:#dbeafe;border-color:#3b82f6;">
@@ -61,6 +69,26 @@
 
 <script>
     // ========================================
+    // DEBUG FUNCTION
+    // ========================================
+    function showDebugInfo() {
+        const debugInfo = {
+            timestamp: new Date().toISOString(),
+            masterDataCache: {
+                suppliers: masterDataCache.suppliers.length,
+                items: masterDataCache.items.length,
+                itemsSample: masterDataCache.items.slice(0, 3)
+            },
+            currentFilteredItems: currentFilteredItems.length,
+            selectedItemData: selectedItemData
+        };
+        
+        document.getElementById('debugContent').textContent = JSON.stringify(debugInfo, null, 2);
+        document.getElementById('debugInfo').style.display = 'block';
+        console.log('🔍 DEBUG INFO:', debugInfo);
+    }
+    
+    // ========================================
     // STATE & CACHED DATA
     // ========================================
     let currentFilteredItems = [];
@@ -74,7 +102,8 @@
         const infoDiv = document.getElementById('itemStockInfo');
         
         itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
-        infoDiv.style.display = 'none';
+        infoDiv.style.display = 'block';
+        document.getElementById('stockText').textContent = 'Pilih item untuk melihat stok';
         document.getElementById('qtyWarning').style.display = 'none';
         selectedItemData = null;
         
@@ -83,11 +112,30 @@
             return !supplierId || item.supplier_id == supplierId;
         });
 
-        console.log('📦 Filtered items count:', currentFilteredItems.length);
-        console.log('📦 Total items in cache:', masterDataCache.items.length);
+        console.log('📦 BARANG KELUAR - Populate Dropdown');
+        console.log('   → Total items in cache:', masterDataCache.items.length);
+        console.log('   → Filtered items count:', currentFilteredItems.length);
+        console.log('   → Supplier filter:', supplierId || 'ALL');
+        
+        // Debug: Log all items
+        console.log('   → Items detail:', masterDataCache.items.map(i => ({
+            id: i.id,
+            name: i.name,
+            sku: i.sku,
+            stock: i.current_stock,
+            supplier_id: i.supplier_id
+        })));
 
         if (currentFilteredItems.length === 0) {
             itemSelect.innerHTML = '<option value="">-- Tidak ada item tersedia --</option>';
+            document.getElementById('stockText').innerHTML = '⚠️ Tidak ada item yang tersedia.<br>Kemungkinan: Belum ada item yang approved atau stok habis.';
+            infoDiv.style.background = '#fee2e2';
+            infoDiv.style.borderColor = '#ef4444';
+            
+            console.warn('⚠️ NO ITEMS AVAILABLE!');
+            console.log('   → Check: Are there any approved items?');
+            console.log('   → Check: Have transactions been approved by supervisor?');
+            
             return;
         }
 
@@ -110,6 +158,8 @@
                 </option>
             `;
         });
+        
+        console.log('✅ Dropdown populated successfully');
     }
     
     // ========================================
@@ -136,6 +186,8 @@
                 sku: sku
             };
             
+            console.log('📦 Item selected:', selectedItemData);
+            
             if (stock > 0) {
                 stockText.innerHTML = `
                     ✅ <strong>${name}</strong> (${sku})<br>
@@ -147,6 +199,7 @@
                 
                 qtyInput.max = stock;
                 qtyInput.value = '';
+                qtyInput.disabled = false;
             } else {
                 stockText.innerHTML = `⚠️ <strong>${name}</strong> stok habis!`;
                 infoDiv.style.display = 'block';
@@ -158,7 +211,10 @@
                 qtyInput.disabled = true;
             }
         } else {
-            infoDiv.style.display = 'none';
+            infoDiv.style.display = 'block';
+            stockText.textContent = 'Pilih item untuk melihat stok';
+            infoDiv.style.background = '#f0f9ff';
+            infoDiv.style.borderColor = '#3b82f6';
             selectedItemData = null;
             qtyInput.max = null;
             qtyInput.disabled = false;
@@ -191,27 +247,46 @@
     }
     
     // ========================================
-    // INIT FUNCTION - FIXED WITH FORCE RELOAD
+    // INIT FUNCTION - ENHANCED DEBUG VERSION
     // ========================================
     window.init_barang_keluar = async function() {
-        console.log('🚀 Init Barang Keluar v6.0 - FORCE RELOAD');
+        console.log('='.repeat(60));
+        console.log('🚀 INIT BARANG KELUAR v7.0 - DEBUG MODE');
+        console.log('='.repeat(60));
         
-        // CRITICAL: Force reload master data setiap kali halaman dibuka
-        console.log('🔄 Force reloading master data...');
+        // CRITICAL: Force reload master data
+        console.log('🔄 Step 1: Force reloading master data...');
         showLoadingModal('Memuat data item terbaru...');
         
         try {
             await loadMasterData();
-            console.log('✅ Master data reloaded');
-            console.log('📦 Total items available:', masterDataCache.items.length);
             
-            // Debug: Log beberapa item terbaru
+            console.log('✅ Step 2: Master data loaded');
+            console.log('   → Total items in cache:', masterDataCache.items.length);
+            console.log('   → Total suppliers:', masterDataCache.suppliers.length);
+            
+            // Debug: Log all items detail
             if (masterDataCache.items.length > 0) {
-                console.log('📦 Latest items:', masterDataCache.items.slice(0, 3));
+                console.log('📦 Items in cache:');
+                masterDataCache.items.forEach((item, idx) => {
+                    console.log(`   ${idx + 1}. ${item.name} (${item.sku})`);
+                    console.log(`      → Stock: ${item.current_stock}`);
+                    console.log(`      → Supplier ID: ${item.supplier_id}`);
+                    console.log(`      → Created: ${item.created_at}`);
+                });
+            } else {
+                console.error('❌ NO ITEMS IN CACHE!');
+                console.log('   → Possible causes:');
+                console.log('      1. No items have been approved by supervisor');
+                console.log('      2. API endpoint returning empty data');
+                console.log('      3. Database has no approved items');
             }
+            
         } catch (error) {
             console.error('❌ Failed to load master data:', error);
             showMessageModal('Error', 'Gagal memuat data item: ' + error.message, false);
+            hideLoadingModal();
+            return;
         } finally {
             hideLoadingModal();
         }
@@ -221,15 +296,18 @@
         const itemSelect = document.getElementById('bk_item_id');
         const qtyInput = document.getElementById('bk_qty');
 
+        console.log('📍 Step 3: Setting up form...');
+        
         // Populate Supplier Filter
         supplierSelect.innerHTML = '<option value="">-- Semua Klien --</option>';
         masterDataCache.suppliers.forEach(s => {
             supplierSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
         });
+        console.log('   ✅ Suppliers populated:', masterDataCache.suppliers.length);
         
         // Event: Supplier Filter Change
         supplierSelect.onchange = function() {
-            console.log('🔍 Filter changed to supplier:', this.value);
+            console.log('🔍 Supplier filter changed to:', this.value);
             populateItemDropdown(this.value);
             updateStockInfo();
         };
@@ -241,6 +319,7 @@
         qtyInput.oninput = validateQuantity;
         
         // Initial load (all items)
+        console.log('📍 Step 4: Initial populate dropdown...');
         populateItemDropdown(''); 
         
         // ========================================
@@ -248,6 +327,8 @@
         // ========================================
         form.onsubmit = async function(e) {
             e.preventDefault();
+            
+            console.log('📤 Form submit triggered');
             
             if (!selectedItemData) {
                 showMessageModal('Validasi', 'Pilih item terlebih dahulu!', false);
@@ -281,6 +362,8 @@
                 note: note
             };
             
+            console.log('📦 Sending payload:', payload);
+            
             // Disable submit button
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
@@ -296,6 +379,7 @@
                 });
 
                 const data = await response.json();
+                console.log('📦 Response:', data);
                 
                 if (data.success) {
                     showMessageModal('✅ Sukses!', data.message, false);
@@ -322,6 +406,10 @@
         // Load history
         renderStaffHistory('OUT', 'riwayatKeluarPanel');
         
-        console.log('✅ Barang Keluar initialized');
+        console.log('✅ Barang Keluar initialized successfully');
+        console.log('='.repeat(60));
     }
+    
+    // Expose showDebugInfo to global
+    window.showDebugInfo = showDebugInfo;
 </script>
