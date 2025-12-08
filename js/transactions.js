@@ -1,7 +1,7 @@
 /**
  * =========================================================
- * TRANSACTIONS.JS - FIXED VERSION 5.0
- * Fix: Item baru langsung masuk pending list
+ * TRANSACTIONS.JS - FIXED VERSION 5.1
+ * Fix: Dropdown filter tidak berfungsi + Autocomplete error
  * =========================================================
  */
 
@@ -98,10 +98,10 @@ function cleanupEventListeners(type) {
 }
 
 // ========================================
-// INIT: BARANG MASUK (FIXED)
+// INIT: BARANG MASUK (FIXED AUTOCOMPLETE)
 // ========================================
 function init_barang_masuk() {
-    console.log('🚀 Init Barang Masuk v5.0 - FIXED');
+    console.log('🚀 Init Barang Masuk v5.1 - FIXED AUTOCOMPLETE');
     
     cleanupEventListeners('barangMasuk');
     
@@ -165,16 +165,24 @@ function init_barang_masuk() {
     const handleSupplierChange = function() {
         selectedSupplierId = this.value;
         
+        console.log('🔍 Supplier changed to:', selectedSupplierId);
+        
         if (selectedSupplierId) {
             skuInput.disabled = false;
             nameInput.disabled = false;
             skuInput.placeholder = "Ketik SKU...";
             nameInput.placeholder = "Ketik Nama...";
+            
+            if (skuInfo) skuInfo.textContent = 'Ketik min 2 karakter untuk mencari';
+            if (nameInfo) nameInfo.textContent = 'Ketik min 2 karakter untuk mencari';
         } else {
             skuInput.disabled = true;
             nameInput.disabled = true;
             skuInput.placeholder = "Pilih Supplier dahulu";
             nameInput.placeholder = "Pilih Supplier dahulu";
+            
+            if (skuInfo) skuInfo.textContent = 'Pilih Supplier terlebih dahulu';
+            if (nameInfo) nameInfo.textContent = 'Pilih Supplier terlebih dahulu';
         }
         
         resetItemSelection(true);
@@ -194,13 +202,23 @@ function init_barang_masuk() {
         if (!skuResults) return;
         skuResults.innerHTML = '';
         
-        if (!selectedSupplierId || query.length < 2) {
+        if (!selectedSupplierId) {
             skuResults.style.display = 'none';
-            if (skuInfo) skuInfo.textContent = query.length > 0 ? 'Ketik min 2 karakter' : 'Ketik untuk mencari';
+            if (skuInfo) skuInfo.textContent = 'Pilih Supplier terlebih dahulu';
+            return;
+        }
+        
+        if (query.length < 2) {
+            skuResults.style.display = 'none';
+            if (skuInfo) skuInfo.textContent = 'Ketik min 2 karakter';
             return;
         }
 
+        console.log('🔍 Searching SKU:', query, 'for supplier:', selectedSupplierId);
+        
         const results = await autocompleteItem(selectedSupplierId, query);
+        
+        console.log('📦 Search results:', results);
         
         if (results.length > 0) {
             results.forEach(item => {
@@ -232,13 +250,23 @@ function init_barang_masuk() {
         if (!nameResults) return;
         nameResults.innerHTML = '';
         
-        if (!selectedSupplierId || query.length < 2) {
+        if (!selectedSupplierId) {
             nameResults.style.display = 'none';
-            if (nameInfo) nameInfo.textContent = query.length > 0 ? 'Ketik min 2 karakter' : 'Ketik untuk mencari';
+            if (nameInfo) nameInfo.textContent = 'Pilih Supplier terlebih dahulu';
+            return;
+        }
+        
+        if (query.length < 2) {
+            nameResults.style.display = 'none';
+            if (nameInfo) nameInfo.textContent = 'Ketik min 2 karakter';
             return;
         }
 
+        console.log('🔍 Searching Name:', query, 'for supplier:', selectedSupplierId);
+        
         const results = await autocompleteItem(selectedSupplierId, query);
+        
+        console.log('📦 Search results:', results);
         
         if (results.length > 0) {
             results.forEach(item => {
@@ -284,7 +312,7 @@ function init_barang_masuk() {
     document.addEventListener('click', handleDocumentClick);
     activeEventListeners.barangMasuk.push({ element: document, event: 'click', handler: handleDocumentClick });
     
-    // EVENT: Form Submit - FIXED LOGIC
+    // EVENT: Form Submit
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         
@@ -307,7 +335,6 @@ function init_barang_masuk() {
         showLoadingModal('Memproses...');
         
         try {
-            // CASE 1: Item existing (sudah dipilih dari dropdown)
             if (selectedItemId) {
                 const payload = {
                     type: 'IN',
@@ -334,9 +361,7 @@ function init_barang_masuk() {
                     showMessageModal('❌ Gagal!', data.message, false);
                 }
             } 
-            // CASE 2: Item baru (input manual)
             else {
-                // Kirim data item baru sekaligus transaksi dalam satu request
                 const payload = {
                     type: 'IN',
                     supplier_id: selectedSupplierId,
@@ -362,8 +387,6 @@ function init_barang_masuk() {
                     showMessageModal('✅ Sukses!', data.message, false);
                     form.reset();
                     resetItemSelection(true);
-                    
-                    // Reload master data dan history
                     await loadMasterData();
                     renderStaffHistory('IN', 'riwayatMasukPanel');
                 } else {
@@ -383,14 +406,14 @@ function init_barang_masuk() {
     activeEventListeners.barangMasuk.push({ element: form, event: 'submit', handler: handleFormSubmit });
     
     renderStaffHistory('IN', 'riwayatMasukPanel');
-    console.log('✅ Barang Masuk initialized v5.0');
+    console.log('✅ Barang Masuk initialized v5.1');
 }
 
 // ========================================
-// INIT: BARANG KELUAR (NO CHANGES)
+// INIT: BARANG KELUAR (FIXED FILTER)
 // ========================================
 function init_barang_keluar() {
-    console.log('🚀 Init Barang Keluar v5.0');
+    console.log('🚀 Init Barang Keluar v5.1 - FIXED FILTER');
     
     cleanupEventListeners('barangKeluar');
     
@@ -401,6 +424,7 @@ function init_barang_keluar() {
     const itemSelect = document.getElementById('bk_item_id');
     const infoDiv = document.getElementById('itemStockInfo');
 
+    // Populate Supplier Filter
     supplierSelect.innerHTML = '<option value="">-- Semua Klien --</option>';
     masterDataCache.suppliers.forEach(s => {
         supplierSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`;
@@ -408,36 +432,114 @@ function init_barang_keluar() {
     
     let allItems = [...masterDataCache.items];
     
+    // ✅ FIX: Populate dropdown dengan filter supplier
     const populateItemDropdown = (supplierId = '') => {
-        itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
-        if (infoDiv) infoDiv.textContent = 'Stok: -';
+        console.log('📦 Populating items with supplier filter:', supplierId);
         
-        const filteredItems = allItems.filter(item => {
-            return !supplierId || item.supplier_id == supplierId;
-        });
+        itemSelect.innerHTML = '<option value="">-- Pilih Item --</option>';
+        if (infoDiv) {
+            document.getElementById('stockText').textContent = 'Pilih Supplier dulu untuk filter item';
+        }
+        
+        // ✅ FIX: Jika tidak ada supplier dipilih, JANGAN tampilkan item
+        if (!supplierId) {
+            console.log('⚠️ No supplier selected - showing empty dropdown');
+            if (infoDiv) {
+                document.getElementById('stockText').innerHTML = '⚠️ Pilih Supplier terlebih dahulu untuk melihat item';
+                infoDiv.style.background = '#fef3c7';
+                infoDiv.style.borderColor = '#f59e0b';
+            }
+            return;
+        }
+        
+        const filteredItems = allItems.filter(item => item.supplier_id == supplierId);
+
+        console.log('   → Filtered items count:', filteredItems.length);
+        
+        if (filteredItems.length === 0) {
+            itemSelect.innerHTML = '<option value="">-- Tidak ada item untuk supplier ini --</option>';
+            if (infoDiv) {
+                document.getElementById('stockText').innerHTML = '⚠️ Supplier ini belum memiliki item yang approved';
+                infoDiv.style.background = '#fee2e2';
+                infoDiv.style.borderColor = '#ef4444';
+            }
+            return;
+        }
 
         filteredItems.forEach(item => {
-            itemSelect.innerHTML += `<option value="${item.id}" data-stock="${item.current_stock}" data-unit="${item.unit}">${item.sku} - ${item.name} (Stok: ${item.current_stock})</option>`;
+            const stockLabel = item.current_stock > 0 ? `Stok: ${item.current_stock}` : '⚠️ Stok Habis';
+            const disabled = item.current_stock <= 0 ? 'disabled' : '';
+            
+            itemSelect.innerHTML += `
+                <option value="${item.id}" 
+                        data-stock="${item.current_stock}" 
+                        data-unit="${item.unit}"
+                        data-name="${item.name}"
+                        data-sku="${item.sku}"
+                        ${disabled}>
+                    ${item.sku} - ${item.name} (${stockLabel})
+                </option>
+            `;
         });
         
-        document.getElementById('bk_qty').max = null;
+        if (infoDiv) {
+            document.getElementById('stockText').textContent = 'Pilih item untuk melihat stok';
+            infoDiv.style.background = '#f0f9ff';
+            infoDiv.style.borderColor = '#3b82f6';
+        }
+        
+        console.log('✅ Dropdown populated successfully');
     };
-
+    
     const updateStockInfo = () => {
         const selectedOption = itemSelect.options[itemSelect.selectedIndex];
+        const stockText = document.getElementById('stockText');
+        const qtyInput = document.getElementById('bk_qty');
         
         if (selectedOption && selectedOption.value && infoDiv) {
-            const stock = selectedOption.getAttribute('data-stock');
+            const stock = parseInt(selectedOption.getAttribute('data-stock'));
             const unit = selectedOption.getAttribute('data-unit');
-            infoDiv.innerHTML = `Stok Tersedia: <b>${stock} ${unit}</b>`;
-            document.getElementById('bk_qty').max = stock;
+            const name = selectedOption.getAttribute('data-name');
+            const sku = selectedOption.getAttribute('data-sku');
+            
+            if (stock > 0) {
+                stockText.innerHTML = `
+                    ✅ <strong>${name}</strong> (${sku})<br>
+                    Stok Tersedia: <strong>${stock} ${unit}</strong>
+                `;
+                infoDiv.style.display = 'block';
+                infoDiv.style.background = '#f0f9ff';
+                infoDiv.style.borderColor = '#3b82f6';
+                
+                qtyInput.max = stock;
+                qtyInput.value = '';
+                qtyInput.disabled = false;
+            } else {
+                stockText.innerHTML = `⚠️ <strong>${name}</strong> stok habis!`;
+                infoDiv.style.display = 'block';
+                infoDiv.style.background = '#fee2e2';
+                infoDiv.style.borderColor = '#ef4444';
+                
+                qtyInput.max = 0;
+                qtyInput.value = '';
+                qtyInput.disabled = true;
+            }
         } else {
-            if (infoDiv) infoDiv.textContent = 'Stok: -';
-            document.getElementById('bk_qty').max = null;
+            if (infoDiv) {
+                infoDiv.style.display = 'block';
+                stockText.textContent = 'Pilih item untuk melihat stok';
+                infoDiv.style.background = '#f0f9ff';
+                infoDiv.style.borderColor = '#3b82f6';
+            }
+            qtyInput.max = null;
+            qtyInput.disabled = false;
         }
+        
+        document.getElementById('qtyWarning').style.display = 'none';
     };
 
     const handleSupplierChange = function() {
+        console.log('🔍 Supplier filter changed to:', this.value);
         populateItemDropdown(this.value);
         updateStockInfo();
     };
@@ -450,7 +552,14 @@ function init_barang_keluar() {
     activeEventListeners.barangKeluar.push({ element: supplierSelect, event: 'change', handler: handleSupplierChange });
     activeEventListeners.barangKeluar.push({ element: itemSelect, event: 'change', handler: handleItemChange });
     
-    populateItemDropdown('');
+    // ✅ INITIAL STATE: Empty dropdown until supplier selected
+    console.log('📍 Initial state: Empty dropdown (waiting for supplier selection)');
+    itemSelect.innerHTML = '<option value="">-- Pilih Supplier dulu --</option>';
+    if (infoDiv) {
+        document.getElementById('stockText').innerHTML = '⚠️ Pilih Supplier terlebih dahulu';
+        infoDiv.style.background = '#fef3c7';
+        infoDiv.style.borderColor = '#f59e0b';
+    }
     
     const handleFormSubmit = async (e) => {
         e.preventDefault();
@@ -469,7 +578,9 @@ function init_barang_keluar() {
              return;
         }
         if (quantity > availableStock) {
-             showMessageModal('Validasi', `Qty (${quantity}) > Stok (${availableStock})`, false);
+             showMessageModal('Validasi Stok', 
+                `Jumlah yang diminta (${quantity}) melebihi stok tersedia (${availableStock}).`, 
+                false);
              return;
         }
         
@@ -482,7 +593,13 @@ function init_barang_keluar() {
             note: note
         };
         
-        showLoadingModal('Mengajukan...');
+        console.log('📦 Sending payload:', payload);
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Memproses...';
+        
+        showLoadingModal('Mengajukan Permintaan Barang Keluar...');
 
         try {
             const response = await fetch('api/transactions.php', {
@@ -492,23 +609,33 @@ function init_barang_keluar() {
             });
 
             const data = await response.json();
+            console.log('📦 Response:', data);
             
             if (data.success) {
                 showMessageModal('✅ Sukses!', data.message, false);
                 form.reset();
-                loadMasterData().then(() => {
-                    populateItemDropdown(supplierSelect.value);
-                    updateStockInfo();
-                    renderStaffHistory('OUT', 'riwayatKeluarPanel');
-                });
+                
+                await loadMasterData();
+                
+                // Reset to empty state
+                itemSelect.innerHTML = '<option value="">-- Pilih Supplier dulu --</option>';
+                if (infoDiv) {
+                    document.getElementById('stockText').innerHTML = '⚠️ Pilih Supplier terlebih dahulu';
+                    infoDiv.style.background = '#fef3c7';
+                    infoDiv.style.borderColor = '#f59e0b';
+                }
+                
+                renderStaffHistory('OUT', 'riwayatKeluarPanel');
             } else {
                 showMessageModal('❌ Gagal!', data.message, false);
             }
         } catch (error) {
-            showMessageModal('Error', 'Koneksi gagal: ' + error.message, false);
-            console.error('Transaction error:', error);
+            showMessageModal('Error Jaringan', 'Gagal terhubung ke API Transaksi: ' + error.message, false);
+            console.error('Transaction submit error:', error);
         } finally {
             hideLoadingModal();
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Request Barang Keluar';
         }
     };
     
@@ -516,7 +643,7 @@ function init_barang_keluar() {
     activeEventListeners.barangKeluar.push({ element: form, event: 'submit', handler: handleFormSubmit });
 
     renderStaffHistory('OUT', 'riwayatKeluarPanel');
-    console.log('✅ Barang Keluar initialized v5.0');
+    console.log('✅ Barang Keluar initialized v5.1');
 }
 
 // ========================================
@@ -539,4 +666,4 @@ window.init_barang_masuk = init_barang_masuk;
 window.init_barang_keluar = init_barang_keluar;
 window.init_request_item = init_request_item;
 
-console.log('✅ Transactions Module v5.0 loaded (COMPLETE FIX)');
+console.log('✅ Transactions Module v5.1 loaded (AUTOCOMPLETE + FILTER FIX)');
