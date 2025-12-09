@@ -1,11 +1,11 @@
 /**
  * =========================================================
  * INVENTORY.JS - INVENTORY MODULE
- * Version: 1.0 - Stock management page
+ * Version: 1.2 - STRICT FILTER: Only Approved Items
  * =========================================================
  */
 
-console.log('📦 INVENTORY MODULE v1.0 - Loading...');
+console.log('📦 INVENTORY MODULE v1.2 - Loading (Strict Approved Filter)...');
 
 // ========================================
 // GLOBAL STATE
@@ -18,7 +18,7 @@ let currentFilter = 'ALL';
 // LOAD INVENTORY DATA
 // ========================================
 async function loadInventoryData() {
-    console.log('📊 Loading inventory data with transaction status...');
+    console.log('📊 Loading inventory data (APPROVED ITEMS ONLY)...');
     
     const user = currentUser();
     const userRole = user?.role;
@@ -35,8 +35,8 @@ async function loadInventoryData() {
     showLoadingModal('Mengambil data inventaris...');
     
     try {
-        // Fetch items data
-        console.log('📡 Step 1: Fetching items...');
+        // ✅ FETCH: Endpoint 'available' sudah memfilter hanya item APPROVED
+        console.log('📡 Fetching APPROVED items from API...');
         const itemsResponse = await fetch('api/items.php?action=available');
         
         if (!itemsResponse.ok) {
@@ -44,14 +44,27 @@ async function loadInventoryData() {
         }
         
         const itemsData = await itemsResponse.json();
-        console.log('✅ Items data received:', itemsData.data?.length, 'items');
+        console.log('✅ API Response received');
+        console.log('   → Success:', itemsData.success);
+        console.log('   → Items count:', itemsData.data?.length || 0);
         
-        if (!itemsData.success || !itemsData.data || itemsData.data.length === 0) {
+        if (!itemsData.success) {
+            throw new Error(itemsData.message || 'API returned error');
+        }
+        
+        // ✅ VALIDASI: Pastikan data ada
+        if (!itemsData.data || itemsData.data.length === 0) {
+            console.log('⚠️ No items found - showing empty state');
             container.innerHTML = `
                 <div style="text-align:center; padding:50px;">
                     <p style="font-size:3rem; margin:0;">📦</p>
-                    <p style="color:var(--muted); font-weight:600;">Belum ada data inventaris</p>
-                    <p class="small">Item akan muncul setelah ada transaksi yang approved</p>
+                    <p style="color:var(--muted); font-weight:600;">Belum ada item yang approved</p>
+                    <p class="small">Item akan muncul di inventaris setelah:</p>
+                    <ol class="small" style="text-align:left; display:inline-block; margin:10px auto;">
+                        <li>Staff mengajukan Barang Masuk dengan item baru</li>
+                        <li>Supervisor menyetujui transaksi tersebut</li>
+                        <li>Item otomatis masuk ke inventaris dengan status APPROVED</li>
+                    </ol>
                     <button class="btn primary btn-sm" onclick="loadInventoryData()">🔄 Coba Lagi</button>
                 </div>
             `;
@@ -59,83 +72,53 @@ async function loadInventoryData() {
             return;
         }
         
-        // Fetch transaction history ONLY for Supervisor/Owner
-        let itemStatusMap = {};
+        // ✅ DOUBLE CHECK: Validasi bahwa semua item benar-benar approved
+        console.log('🔍 Validating item approval status...');
+        const nonApprovedItems = itemsData.data.filter(item => item.is_approved != 1);
         
-        if (userRole === 'supervisor' || userRole === 'owner') {
-            console.log('📡 Step 2: Fetching transaction history (Supervisor/Owner only)...');
+        if (nonApprovedItems.length > 0) {
+            console.error('❌ CRITICAL: Found non-approved items in "available" endpoint!');
+            console.error('   → Non-approved items:', nonApprovedItems);
+            console.error('   → This should not happen - API filter is broken!');
             
-            try {
-                const historyResponse = await fetch('api/report.php?action=history');
-                
-                if (historyResponse.ok) {
-                    const historyData = await historyResponse.json();
-                    console.log('✅ Transaction history received:', historyData.data?.length, 'transactions');
-                    
-                    if (historyData.success && historyData.data) {
-                        // Sort by most recent first
-                        const sortedTransactions = historyData.data.sort((a, b) => 
-                            new Date(b.request_date) - new Date(a.request_date)
-                        );
-                        
-                        // Get latest transaction status for each item (IN transactions only)
-                        sortedTransactions.forEach(trx => {
-                            if (trx.type === 'IN' && !itemStatusMap[trx.item_id]) {
-                                itemStatusMap[trx.item_id] = {
-                                    status: trx.status,
-                                    transaction_code: trx.transaction_code,
-                                    approval_date: trx.approval_date
-                                };
-                            }
-                        });
-                    }
-                }
-            } catch (historyError) {
-                console.warn('⚠️ Could not fetch transaction history:', historyError);
-            }
+            // Filter di frontend sebagai fallback
+            itemsData.data = itemsData.data.filter(item => item.is_approved == 1);
+            console.log('   → Frontend filter applied, remaining items:', itemsData.data.length);
         } else {
-            console.log('ℹ️ Staff role - using item is_approved status directly');
+            console.log('✅ Validation passed: All items are APPROVED');
         }
         
-        console.log('📊 Item status map:', itemStatusMap);
-        
-        // Normalize data and add transaction status
+        // ✅ PROCESS: Normalize data
         inventoryData = itemsData.data.map(item => {
-            let actualStatus = 'PENDING'; // Default
-            
-            if (userRole === 'supervisor' || userRole === 'owner') {
-                // For Supervisor/Owner: Use transaction status
-                const latestTrx = itemStatusMap[item.id];
-                if (latestTrx) {
-                    actualStatus = latestTrx.status; // APPROVED, REJECTED, or PENDING
-                }
-            } else {
-                // For Staff: Use item.is_approved from database
-                actualStatus = item.is_approved == 1 ? 'APPROVED' : 'PENDING';
-            }
-            
             return {
                 id: item.id,
                 sku: item.sku,
                 item_name: item.name || item.item_name,
-                current_stock: item.current_stock,
+                current_stock: parseInt(item.current_stock) || 0,
                 unit: item.unit,
-                min_stock: item.min_stock || 10,
+                min_stock: parseInt(item.min_stock) || 10,
                 supplier_name: item.supplier_name,
-                is_approved: actualStatus === 'APPROVED' ? 1 : 0,
-                transaction_status: actualStatus,
-                latest_transaction: itemStatusMap[item.id] || null
+                is_approved: 1, // ✅ Guaranteed approved
+                created_at: item.created_at
             };
         });
         
-        console.log('📦 Processed items with status:', inventoryData.slice(0, 3));
+        console.log('📦 Inventory data processed:');
+        console.log('   → Total items:', inventoryData.length);
+        console.log('   → All items status: APPROVED');
+        console.log('   → Sample items:', inventoryData.slice(0, 3).map(i => ({
+            sku: i.sku,
+            name: i.item_name,
+            stock: i.current_stock,
+            approved: i.is_approved
+        })));
         
         filteredData = [...inventoryData];
         
         updateSummary(inventoryData);
         renderInventoryTable(filteredData);
         
-        console.log('✅ Inventory rendered successfully');
+        console.log('✅ Inventory rendered successfully!');
         
     } catch (error) {
         console.error('❌ Load inventory error:', error);
@@ -143,6 +126,15 @@ async function loadInventoryData() {
             <div style="text-align:center; padding:30px;">
                 <p style="color:var(--danger); font-weight:600;">❌ Error Jaringan</p>
                 <p class="small">${error.message}</p>
+                <div style="background:#f8fafc; padding:15px; border-radius:6px; margin:15px 0; text-align:left;">
+                    <h4 style="margin-top:0;">🔧 Troubleshooting:</h4>
+                    <ul class="small" style="margin:0;">
+                        <li>Pastikan WAMP/XAMPP sudah running</li>
+                        <li>Cek file <code>api/items.php</code> ada dan tidak error</li>
+                        <li>Buka Console (F12) untuk melihat detail error</li>
+                        <li>Pastikan database <code>swims_db</code> terhubung</li>
+                    </ul>
+                </div>
                 <button class="btn primary btn-sm" onclick="loadInventoryData()">🔄 Coba Lagi</button>
             </div>
         `;
@@ -157,12 +149,12 @@ async function loadInventoryData() {
 function updateSummary(data) {
     const totalItems = data.length;
     const totalStock = data.reduce((sum, item) => sum + parseInt(item.current_stock || 0), 0);
-    const lowStockCount = data.filter(item => 
-        item.is_approved == 1 && 
-        parseInt(item.current_stock) <= parseInt(item.min_stock) &&
-        parseInt(item.current_stock) > 0
-    ).length;
-    const approvedItems = data.filter(item => item.is_approved == 1).length;
+    const lowStockCount = data.filter(item => {
+        const stock = parseInt(item.current_stock);
+        const minStock = parseInt(item.min_stock);
+        return stock > 0 && stock <= minStock;
+    }).length;
+    const approvedItems = data.length; // ✅ Semua item di list ini sudah approved
     
     const totalItemsEl = document.getElementById('totalItems');
     const totalStockEl = document.getElementById('totalStock');
@@ -174,7 +166,7 @@ function updateSummary(data) {
     if (lowStockCountEl) lowStockCountEl.textContent = lowStockCount;
     if (approvedItemsEl) approvedItemsEl.textContent = approvedItems;
     
-    console.log('📊 Summary updated:', {
+    console.log('📊 Summary stats:', {
         totalItems,
         totalStock,
         lowStockCount,
@@ -214,7 +206,7 @@ function renderInventoryTable(data) {
                     <th>Stok Min</th>
                     <th>Status Stok</th>
                     <th>Klien/Supplier</th>
-                    <th>Status Item</th>
+                    <th>Status Approval</th>
                 </tr>
             </thead>
             <tbody>
@@ -238,17 +230,8 @@ function renderInventoryTable(data) {
             stockStatusBadge = '<span class="badge badge-success">✅ Normal</span>';
         }
         
-        // Item status based on LATEST TRANSACTION STATUS
-        let approvalBadge;
-        const trxStatus = item.transaction_status || 'PENDING';
-        
-        if (trxStatus === 'APPROVED') {
-            approvalBadge = '<span class="badge badge-success">✅ APPROVED</span>';
-        } else if (trxStatus === 'REJECTED') {
-            approvalBadge = '<span class="badge badge-danger">❌ REJECTED</span>';
-        } else {
-            approvalBadge = '<span class="badge badge-warning">⏳ PENDING</span>';
-        }
+        // ✅ Item status: ALWAYS APPROVED (guaranteed by API)
+        const approvalBadge = '<span class="badge badge-success">✅ APPROVED</span>';
         
         html += `
             <tr ${rowClass}>
@@ -274,6 +257,8 @@ function renderInventoryTable(data) {
     `;
     
     container.innerHTML = html;
+    
+    console.log('✅ Table rendered with', data.length, 'approved items');
 }
 
 // ========================================
@@ -289,7 +274,7 @@ function filterInventory(filterType) {
         event.target.className = 'btn primary btn-sm';
     }
     
-    console.log('🔍 Filtering by:', filterType);
+    console.log('🔍 Applying filter:', filterType);
     
     const filterStatus = document.getElementById('filterStatus');
     
@@ -301,7 +286,7 @@ function filterInventory(filterType) {
         filteredData = inventoryData.filter(item => {
             const stock = parseInt(item.current_stock);
             const minStock = parseInt(item.min_stock);
-            return item.is_approved == 1 && stock > 0 && stock <= minStock;
+            return stock > 0 && stock <= minStock;
         });
         if (filterStatus) filterStatus.innerHTML = 'Menampilkan: <strong style="color:var(--warning);">Stok Rendah</strong>';
     } else if (filterType === 'OUT') {
@@ -314,7 +299,7 @@ function filterInventory(filterType) {
     if (searchInput) searchInput.value = '';
     
     renderInventoryTable(filteredData);
-    console.log('✅ Filter applied, showing', filteredData.length, 'items');
+    console.log('✅ Filter applied -', filteredData.length, 'items displayed');
 }
 
 // ========================================
@@ -324,50 +309,45 @@ function searchInventory() {
     const searchInput = document.getElementById('searchInventory');
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
     
+    console.log('🔍 Searching:', query);
+    
     if (!query) {
         // Reset to current filter
-        if (currentFilter === 'ALL') {
-            filteredData = [...inventoryData];
-        } else if (currentFilter === 'LOW') {
-            filteredData = inventoryData.filter(item => {
-                const stock = parseInt(item.current_stock);
-                const minStock = parseInt(item.min_stock);
-                return item.is_approved == 1 && stock > 0 && stock <= minStock;
-            });
-        } else if (currentFilter === 'OUT') {
-            filteredData = inventoryData.filter(item => parseInt(item.current_stock) === 0);
-        }
-    } else {
-        // Search within current filter
-        let baseData = [];
-        if (currentFilter === 'ALL') {
-            baseData = [...inventoryData];
-        } else if (currentFilter === 'LOW') {
-            baseData = inventoryData.filter(item => {
-                const stock = parseInt(item.current_stock);
-                const minStock = parseInt(item.min_stock);
-                return item.is_approved == 1 && stock > 0 && stock <= minStock;
-            });
-        } else if (currentFilter === 'OUT') {
-            baseData = inventoryData.filter(item => parseInt(item.current_stock) === 0);
-        }
-        
-        filteredData = baseData.filter(item => 
-            item.sku.toLowerCase().includes(query) || 
-            item.item_name.toLowerCase().includes(query) ||
-            item.supplier_name.toLowerCase().includes(query)
-        );
+        filterInventory(currentFilter);
+        return;
     }
     
+    // Search within current filter
+    let baseData = [];
+    if (currentFilter === 'ALL') {
+        baseData = [...inventoryData];
+    } else if (currentFilter === 'LOW') {
+        baseData = inventoryData.filter(item => {
+            const stock = parseInt(item.current_stock);
+            const minStock = parseInt(item.min_stock);
+            return stock > 0 && stock <= minStock;
+        });
+    } else if (currentFilter === 'OUT') {
+        baseData = inventoryData.filter(item => parseInt(item.current_stock) === 0);
+    }
+    
+    filteredData = baseData.filter(item => 
+        item.sku.toLowerCase().includes(query) || 
+        item.item_name.toLowerCase().includes(query) ||
+        item.supplier_name.toLowerCase().includes(query)
+    );
+    
     renderInventoryTable(filteredData);
+    console.log('✅ Search completed -', filteredData.length, 'results');
 }
 
 // ========================================
 // INIT FUNCTION
 // ========================================
 function init_inventory() {
-    console.log('🚀 Init Inventory Page v1.0');
-    console.log('✅ All functions ready');
+    console.log('🚀 Init Inventory Page v1.2 (Strict Approved Filter)');
+    console.log('   → Only showing items with is_approved = TRUE');
+    console.log('   → PENDING and REJECTED items excluded');
     
     // Small delay to ensure DOM is ready
     setTimeout(() => {
@@ -383,7 +363,7 @@ window.loadInventoryData = loadInventoryData;
 window.filterInventory = filterInventory;
 window.searchInventory = searchInventory;
 
-console.log('✅ Inventory Module v1.0 loaded');
+console.log('✅ Inventory Module v1.2 loaded (Strict Approved Filter)');
 console.log('   Exposed functions:', {
     init_inventory: typeof window.init_inventory,
     loadInventoryData: typeof window.loadInventoryData,

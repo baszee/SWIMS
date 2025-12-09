@@ -1,7 +1,7 @@
 <?php
 // FILE: api/items.php
 // Fungsi: API CRUD untuk Data Master Barang/Item dan Stok
-// Versi: 2.3 - FIX: Available items endpoint untuk barang keluar
+// Version: 2.4 - STRICT FILTER: Only approved items in 'available' endpoint
 session_start();
 include('../config/db_config.php'); 
 
@@ -87,10 +87,19 @@ try {
             }
             
             // =====================================================================
-            // ENDPOINT: AVAILABLE ITEMS (action=available) - FIXED VERSION
-            // Digunakan oleh Barang Keluar untuk populate dropdown
+            // ENDPOINT: AVAILABLE ITEMS (action=available) - STRICT APPROVED ONLY
+            // Digunakan oleh:
+            // 1. Barang Keluar (dropdown item)
+            // 2. Inventaris Stok (daftar lengkap)
+            // 
+            // ✅ HANYA menampilkan item yang is_approved = TRUE
+            // ❌ TIDAK menampilkan item PENDING atau REJECTED
             // =====================================================================
             elseif ($action === 'available') {
+                error_log("=== ITEMS API: AVAILABLE ENDPOINT ===");
+                error_log("User role: " . $user_role);
+                error_log("User ID: " . $user_id);
+                
                 $sql = "
                     SELECT 
                         i.id, 
@@ -112,9 +121,26 @@ try {
                 $stmt = $pdo->query($sql);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-                error_log("Available items count: " . count($items));
-                if (count($items) > 0) {
-                    error_log("Latest item: " . json_encode($items[0]));
+                error_log("✅ Items retrieved: " . count($items));
+                
+                // Debug: Log semua item dengan status approved
+                foreach ($items as $item) {
+                    error_log("  → Item ID: {$item['id']} | SKU: {$item['sku']} | Name: {$item['name']} | Approved: {$item['is_approved']} | Stock: {$item['current_stock']}");
+                }
+                
+                // ✅ VALIDASI: Pastikan semua item benar-benar approved
+                $all_approved = true;
+                foreach ($items as $item) {
+                    if ($item['is_approved'] != 1) {
+                        $all_approved = false;
+                        error_log("⚠️ WARNING: Non-approved item found! ID: {$item['id']}");
+                    }
+                }
+                
+                if ($all_approved) {
+                    error_log("✅ VALIDATION PASSED: All items are approved");
+                } else {
+                    error_log("❌ VALIDATION FAILED: Some items are not approved!");
                 }
     
                 api_response(true, "Daftar item approved berhasil diambil.", $items);
@@ -122,6 +148,7 @@ try {
             
             // =====================================================================
             // ENDPOINT: LIST ALL (Default - Untuk manajemen Admin)
+            // Menampilkan SEMUA item termasuk PENDING dan REJECTED
             // =====================================================================
             else {
                 $stmt = $pdo->query("
