@@ -91,9 +91,6 @@ try {
             // Digunakan oleh Barang Keluar untuk populate dropdown
             // =====================================================================
             elseif ($action === 'available') {
-                // FIX: Query ini harus mengambil SEMUA item yang APPROVED
-                // Tanpa peduli kapan item tersebut dibuat
-                
                 $sql = "
                     SELECT 
                         i.id, 
@@ -102,6 +99,8 @@ try {
                         i.unit, 
                         i.current_stock, 
                         i.supplier_id,
+                        i.min_stock,
+                        i.is_approved,
                         s.name as supplier_name,
                         i.created_at
                     FROM items i 
@@ -109,16 +108,15 @@ try {
                     WHERE i.is_approved = TRUE
                     ORDER BY i.created_at DESC, i.name ASC
                 ";
-                
+    
                 $stmt = $pdo->query($sql);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                // Debug log
+    
                 error_log("Available items count: " . count($items));
                 if (count($items) > 0) {
                     error_log("Latest item: " . json_encode($items[0]));
                 }
-                
+    
                 api_response(true, "Daftar item approved berhasil diambil.", $items);
             }
             

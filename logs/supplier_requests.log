@@ -209,3 +209,101 @@
 [2025-12-08 18:39:19] GET request from Staff Abbas
 [2025-12-08 18:39:19] User authenticated - ID: 5, Role: staff
 [2025-12-08 18:39:19] GET action: list
+[2025-12-09 03:06:40] GET request from staff1
+[2025-12-09 03:06:40] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:06:40] GET action: my_requests
+[2025-12-09 03:06:40] Found 0 requests for user 2
+[2025-12-09 03:07:00] GET request from staff1
+[2025-12-09 03:07:00] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:07:00] GET action: list
+[2025-12-09 03:07:08] GET request from staff1
+[2025-12-09 03:07:08] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:07:08] GET action: my_requests
+[2025-12-09 03:07:08] Found 0 requests for user 2
+[2025-12-09 03:08:26] GET request from staff1
+[2025-12-09 03:08:26] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:08:26] GET action: my_requests
+[2025-12-09 03:08:26] Found 0 requests for user 2
+[2025-12-09 03:08:32] GET request from staff1
+[2025-12-09 03:08:32] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:08:32] GET action: my_requests
+[2025-12-09 03:08:32] Found 0 requests for user 2
+[2025-12-09 03:08:55] GET request from staff1
+[2025-12-09 03:08:55] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:08:55] GET action: list
+[2025-12-09 03:09:12] GET request from staff1
+[2025-12-09 03:09:12] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:09:12] GET action: my_requests
+[2025-12-09 03:09:12] Found 0 requests for user 2
+[2025-12-09 03:09:13] GET request from staff1
+[2025-12-09 03:09:13] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:09:13] GET action: my_requests
+[2025-12-09 03:09:13] Found 0 requests for user 2
+[2025-12-09 03:29:16] GET request from staff1
+[2025-12-09 03:29:16] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:29:16] GET action: list
+[2025-12-09 03:29:18] GET request from staff1
+[2025-12-09 03:29:18] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:29:18] GET action: my_requests
+[2025-12-09 03:29:18] Found 0 requests for user 2
+[2025-12-09 03:29:38] POST request from staff1
+[2025-12-09 03:29:38] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:29:38] POST: Starting creation process
+[2025-12-09 03:29:38] POST: Raw input = {"name":"PT Dell Indonesia","contact_person":"Samuel","phone":"082357680889","address":"Jl. MH Thamrin No.1, RT.1/RW.1, Menteng, Kec. Menteng, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta"}
+[2025-12-09 03:29:38] POST: Decoded data = {"name":"PT Dell Indonesia","contact_person":"Samuel","phone":"082357680889","address":"Jl. MH Thamrin No.1, RT.1\/RW.1, Menteng, Kec. Menteng, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta"}
+[2025-12-09 03:29:38] POST: Name='PT Dell Indonesia', Contact='Samuel'
+[2025-12-09 03:29:38] POST: Duplicate check count = 0
+[2025-12-09 03:29:38] POST: is_active=0, user_id=2
+[2025-12-09 03:29:38] POST SUCCESS: New supplier ID = 6
+[2025-12-09 03:29:38] POST: Verified insertion = {"id":6,"name":"PT Dell Indonesia","contact_person":"Samuel","phone":"082357680889","address":"Jl. MH Thamrin No.1, RT.1\/RW.1, Menteng, Kec. Menteng, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta","is_active":0,"created_at":"2025-12-09 10:29:38","created_by_user_id":2}
+[2025-12-09 03:30:06] GET request from staff1
+[2025-12-09 03:30:06] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:30:06] GET action: my_requests
+[2025-12-09 03:30:06] Found 1 requests for user 2
+[2025-12-09 03:42:55] GET request from staff1
+[2025-12-09 03:42:55] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:42:55] GET action: list
+[2025-12-09 03:48:15] GET request from staff1
+[2025-12-09 03:48:15] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:48:15] GET action: list
+[2025-12-09 03:49:32] GET request from staff1
+[2025-12-09 03:49:32] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:49:32] GET action: list
+[2025-12-09 03:50:55] GET request from staff1
+[2025-12-09 03:50:55] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:50:55] GET action: list
+[2025-12-09 03:51:19] GET request from staff1
+[2025-12-09 03:51:19] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:51:19] GET action: list
+[2025-12-09 03:54:25] GET request from staff1
+[2025-12-09 03:54:25] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:54:25] GET action: list
+[2025-12-09 03:55:27] GET request from staff1
+[2025-12-09 03:55:27] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:55:27] GET action: list
+[2025-12-09 03:59:37] GET request from staff1
+[2025-12-09 03:59:37] User authenticated - ID: 2, Role: staff
+[2025-12-09 03:59:37] GET action: list
+[2025-12-09 04:02:54] GET request from staff1
+[2025-12-09 04:02:54] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:02:54] GET action: list
+[2025-12-09 04:04:16] GET request from staff1
+[2025-12-09 04:04:16] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:04:16] GET action: list
+[2025-12-09 04:04:16] GET request from staff1
+[2025-12-09 04:04:16] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:04:16] GET action: list
+[2025-12-09 04:08:52] GET request from staff1
+[2025-12-09 04:08:52] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:08:52] GET action: list
+[2025-12-09 04:25:26] GET request from staff1
+[2025-12-09 04:25:26] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:25:26] GET action: my_requests
+[2025-12-09 04:25:26] Found 1 requests for user 2
+[2025-12-09 04:25:28] GET request from staff1
+[2025-12-09 04:25:28] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:25:28] GET action: my_requests
+[2025-12-09 04:25:28] Found 1 requests for user 2
+[2025-12-09 04:27:03] GET request from staff1
+[2025-12-09 04:27:03] User authenticated - ID: 2, Role: staff
+[2025-12-09 04:27:03] GET action: list

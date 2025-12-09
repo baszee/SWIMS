@@ -88,8 +88,12 @@ try {
                 $sqlStatus = "UPDATE transactions SET status = 'APPROVED', approved_by_user_id = ?, approval_date = NOW() WHERE id = ?";
                 $pdo->prepare($sqlStatus)->execute([$user_id, $id]);
 
+                // ✅ TAMBAHAN: Auto-approve item jika masih pending
+                $sqlApproveItem = "UPDATE items SET is_approved = TRUE WHERE id = ? AND is_approved = FALSE";
+                $pdo->prepare($sqlApproveItem)->execute([$trx['item_id']]);
+
                 $pdo->commit();
-                api_response(true, "Transaksi APPROVED.");
+                api_response(true, "Transaksi APPROVED dan item telah diaktifkan.");
             } catch (Exception $e) {
                 $pdo->rollBack();
                 api_response(false, "DB Error: " . $e->getMessage(), null, 500);

@@ -47,5 +47,15 @@ session_start();
     // Inisialisasi aplikasi
     checkSessionAndRender(); 
   </script>
+  
+  <script src="js/history_transaksi.js"></script>
+  
+  <!-- ⭐ TAMBAHKAN INI -->
+  <script src="js/inventory.js"></script>
+  
+  <script>
+    // Inisialisasi aplikasi
+    checkSessionAndRender(); 
+  </script>
 </body>
 </html>
