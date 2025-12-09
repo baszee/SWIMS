@@ -313,3 +313,17 @@
 [2025-12-09 09:15:11] GET request from staff1
 [2025-12-09 09:15:11] User authenticated - ID: 2, Role: staff
 [2025-12-09 09:15:11] GET action: list
+[2025-12-09 13:13:46] GET request from staff1
+[2025-12-09 13:13:46] User authenticated - ID: 2, Role: staff
+[2025-12-09 13:13:46] GET action: list
+[2025-12-09 13:17:52] GET request from staff1
+[2025-12-09 13:17:52] User authenticated - ID: 2, Role: staff
+[2025-12-09 13:17:52] GET action: my_requests
+[2025-12-09 13:17:52] Found 3 requests for user 2
+[2025-12-09 16:42:58] GET request from staff1
+[2025-12-09 16:42:58] User authenticated - ID: 2, Role: staff
+[2025-12-09 16:42:58] GET action: list
+[2025-12-09 16:43:42] GET request from staff1
+[2025-12-09 16:43:42] User authenticated - ID: 2, Role: staff
+[2025-12-09 16:43:42] GET action: my_requests
+[2025-12-09 16:43:42] Found 3 requests for user 2

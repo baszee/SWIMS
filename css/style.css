@@ -412,3 +412,54 @@ hr{
     font-size:1.5rem;
   }
 }
+
+/* =========================================
+   INVENTORY ENHANCEMENTS v3.0
+   ========================================= */
+
+/* Supplier Dropdown Styling */
+#filterSupplier {
+    font-weight: 600;
+    font-size: 0.95rem;
+    background: var(--card);
+    cursor: pointer;
+}
+
+#filterSupplier:hover {
+    border-color: var(--primary);
+}
+
+/* Search Input Styling */
+#searchInventory {
+    background: var(--card);
+}
+
+#searchInventory:focus {
+    background: #fff;
+}
+
+/* Table Improvements */
+.table tbody tr:hover {
+    background: #f8fafc;
+    cursor: default;
+}
+
+/* Stock Color Indicators */
+.stock-ok { color: var(--success) !important; }
+.stock-warning { color: var(--warning) !important; }
+.stock-danger { color: var(--danger) !important; }
+
+/* Filter Status */
+#filterStatus {
+    padding: 8px 12px;
+    background: #f0f9ff;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* Responsive Grid */
+@media (max-width: 768px) {
+    .card > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+}
