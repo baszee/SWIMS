@@ -341,3 +341,10 @@
 [2025-12-10 02:01:07] GET request from staff1
 [2025-12-10 02:01:07] User authenticated - ID: 2, Role: staff
 [2025-12-10 02:01:07] GET action: list
+[2025-12-10 14:43:18] GET request from staff1
+[2025-12-10 14:43:18] User authenticated - ID: 2, Role: staff
+[2025-12-10 14:43:18] GET action: list
+[2025-12-10 14:44:00] GET request from staff1
+[2025-12-10 14:44:00] User authenticated - ID: 2, Role: staff
+[2025-12-10 14:44:00] GET action: my_requests
+[2025-12-10 14:44:00] Found 3 requests for user 2
