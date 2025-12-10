@@ -327,3 +327,17 @@
 [2025-12-09 16:43:42] User authenticated - ID: 2, Role: staff
 [2025-12-09 16:43:42] GET action: my_requests
 [2025-12-09 16:43:42] Found 3 requests for user 2
+[2025-12-10 01:57:44] GET request from staff1
+[2025-12-10 01:57:44] User authenticated - ID: 2, Role: staff
+[2025-12-10 01:57:44] GET action: list
+[2025-12-10 01:57:46] GET request from staff1
+[2025-12-10 01:57:46] User authenticated - ID: 2, Role: staff
+[2025-12-10 01:57:46] GET action: my_requests
+[2025-12-10 01:57:46] Found 1 requests for user 2
+[2025-12-10 01:57:51] GET request from staff1
+[2025-12-10 01:57:51] User authenticated - ID: 2, Role: staff
+[2025-12-10 01:57:51] GET action: my_requests
+[2025-12-10 01:57:51] Found 1 requests for user 2
+[2025-12-10 02:01:07] GET request from staff1
+[2025-12-10 02:01:07] User authenticated - ID: 2, Role: staff
+[2025-12-10 02:01:07] GET action: list

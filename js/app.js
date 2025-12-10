@@ -208,6 +208,7 @@ function renderMenu(){
     if (role === 'admin'){
         buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('admin_users')">User Management</button>`;
+        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
     }
     
     if (role === 'owner'){
@@ -284,7 +285,7 @@ const ROLE_ALLOWED_PAGES = {
     'barang_masuk': ['staff'],
     'barang_keluar': ['staff'],
     'request_item': ['staff'],
-    'inventory': ['staff','supervisor','owner'], // ← NEW
+    'inventory': ['staff','supervisor','owner','admin'],
     'supervisor': ['supervisor'],
     'approval': ['supervisor'],
     'approval_items': ['supervisor'],
