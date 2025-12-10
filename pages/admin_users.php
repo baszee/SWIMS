@@ -1,38 +1,42 @@
 <!-- ============================================================================
-FILE: pages/admin_users.php - Enhanced with Activity Logs
+FILE: pages/admin_users.php - SIMPLE VERSION (Text Only, No Icons)
 ============================================================================ -->
 
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>👥 Manajemen Pengguna</h2>
+        <h2>Manajemen Pengguna</h2>
         <div style="display: flex; gap: 8px;">
-            <button class="btn success" onclick="showUserForm()">+ Tambah User Baru</button>
-            <button class="btn" onclick="toggleActivityLogs()">📋 Activity Logs</button>
+            <button class="btn success" onclick="showUserForm()">Tambah User Baru</button>
+            <button class="btn" onclick="toggleActivityLogsSection()">Activity Logs</button>
         </div>
     </div>
-    <p class="small">Administrator dapat menambah, mengubah role, dan menonaktifkan akun pengguna SWIMS.</p>
+    <p class="small">Administrator dapat menambah, mengubah, dan menghapus akun pengguna SWIMS.</p>
 </div>
 
 <!-- Activity Logs Section (Hidden by default) -->
 <div id="activityLogsSection" style="display:none;">
     <div class="card" style="background:#f0f9ff; border-left:4px solid #3b82f6;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 style="margin: 0;">📋 Recent Activity Logs</h3>
-            <button class="btn btn-sm" onclick="refreshActivityLogs()">🔄 Refresh</button>
+            <h3 style="margin: 0;">Recent Activity Logs</h3>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-sm" onclick="refreshActivityLogsSection()">Refresh</button>
+                <button class="btn btn-sm" onclick="loadPage('admin_activity_logs')">View Full Logs</button>
+            </div>
         </div>
         
         <!-- Simple Filters -->
         <div style="display: flex; gap: 12px; margin-bottom: 15px;">
-            <select id="logUserFilter" onchange="filterActivityLogs()" style="flex: 1; margin: 0;">
+            <select id="logUserFilter" onchange="filterActivityLogsSection()" style="flex: 1; margin: 0;">
                 <option value="">-- Semua User --</option>
             </select>
-            <select id="logActionFilter" onchange="filterActivityLogs()" style="flex: 1; margin: 0;">
+            <select id="logActionFilter" onchange="filterActivityLogsSection()" style="flex: 1; margin: 0;">
                 <option value="">-- Semua Action --</option>
                 <option value="LOGIN">LOGIN</option>
                 <option value="LOGOUT">LOGOUT</option>
                 <option value="CREATE">CREATE</option>
                 <option value="UPDATE">UPDATE</option>
-                <option value="DELETE">DELETE / DEACTIVATE</option>
+                <option value="DELETE">DELETE</option>
+                <option value="DEACTIVATE">DEACTIVATE</option>
             </select>
         </div>
         
@@ -44,7 +48,6 @@ FILE: pages/admin_users.php - Enhanced with Activity Logs
 
 <!-- User List Panel -->
 <div id="userListPanel">
-    <!-- Konten tabel user akan di-load di sini -->
     <div class="card">
         <p>Memuat daftar pengguna...</p>
     </div>
@@ -54,19 +57,20 @@ FILE: pages/admin_users.php - Enhanced with Activity Logs
 // ========================================
 // GLOBAL STATE
 // ========================================
-let allActivityLogs = [];
-let activityLogsVisible = false;
+let allActivityLogsData = [];
+let activityLogsVisibleState = false;
 
 // ========================================
 // TOGGLE ACTIVITY LOGS
 // ========================================
-function toggleActivityLogs() {
+function toggleActivityLogsSection() {
+    console.log('Toggle activity logs section');
     const section = document.getElementById('activityLogsSection');
-    activityLogsVisible = !activityLogsVisible;
+    activityLogsVisibleState = !activityLogsVisibleState;
     
-    if (activityLogsVisible) {
+    if (activityLogsVisibleState) {
         section.style.display = 'block';
-        loadActivityLogsSimple();
+        loadActivityLogsSimpleData();
     } else {
         section.style.display = 'none';
     }
@@ -75,14 +79,13 @@ function toggleActivityLogs() {
 // ========================================
 // LOAD ACTIVITY LOGS (SIMPLE VERSION)
 // ========================================
-async function loadActivityLogsSimple() {
+async function loadActivityLogsSimpleData() {
     const container = document.getElementById('activityLogsContainer');
     const userFilter = document.getElementById('logUserFilter');
     
-    container.innerHTML = '<p style="text-align:center;">⏳ Memuat logs...</p>';
+    container.innerHTML = '<p style="text-align:center;">Memuat logs...</p>';
     
     try {
-        // Fetch logs
         const logsResponse = await fetch('api/admin_activity.php?action=recent&limit=20');
         const logsData = await logsResponse.json();
         
@@ -90,7 +93,7 @@ async function loadActivityLogsSimple() {
             throw new Error(logsData.message);
         }
         
-        allActivityLogs = logsData.data;
+        allActivityLogsData = logsData.data;
         
         // Populate user filter
         const users = await fetch('api/admin_user.php').then(r => r.json());
@@ -101,14 +104,13 @@ async function loadActivityLogsSimple() {
             });
         }
         
-        // Render logs
-        renderActivityLogs(allActivityLogs);
+        renderActivityLogsData(allActivityLogsData);
         
     } catch (error) {
         console.error('Load activity logs error:', error);
         container.innerHTML = `
-            <p style="color:var(--danger); text-align:center;">❌ Gagal memuat logs: ${error.message}</p>
-            <button class="btn btn-sm" onclick="loadActivityLogsSimple()">🔄 Coba Lagi</button>
+            <p style="color:var(--danger); text-align:center;">Gagal memuat logs: ${error.message}</p>
+            <button class="btn btn-sm" onclick="loadActivityLogsSimpleData()">Coba Lagi</button>
         `;
     }
 }
@@ -116,7 +118,7 @@ async function loadActivityLogsSimple() {
 // ========================================
 // RENDER ACTIVITY LOGS
 // ========================================
-function renderActivityLogs(logs) {
+function renderActivityLogsData(logs) {
     const container = document.getElementById('activityLogsContainer');
     
     if (logs.length === 0) {
@@ -130,7 +132,7 @@ function renderActivityLogs(logs) {
     html += '</tr></thead><tbody>';
     
     logs.forEach(log => {
-        const actionColor = getActionColor(log.action);
+        const actionColor = getActionColorHelper(log.action);
         const time = new Date(log.created_at).toLocaleString('id-ID', {
             day: '2-digit',
             month: 'short',
@@ -160,11 +162,11 @@ function renderActivityLogs(logs) {
 // ========================================
 // FILTER ACTIVITY LOGS
 // ========================================
-function filterActivityLogs() {
+function filterActivityLogsSection() {
     const userFilter = document.getElementById('logUserFilter').value;
     const actionFilter = document.getElementById('logActionFilter').value;
     
-    let filtered = allActivityLogs;
+    let filtered = allActivityLogsData;
     
     if (userFilter) {
         filtered = filtered.filter(log => log.username === userFilter);
@@ -174,20 +176,20 @@ function filterActivityLogs() {
         filtered = filtered.filter(log => log.action === actionFilter);
     }
     
-    renderActivityLogs(filtered);
+    renderActivityLogsData(filtered);
 }
 
 // ========================================
 // REFRESH ACTIVITY LOGS
 // ========================================
-function refreshActivityLogs() {
-    loadActivityLogsSimple();
+function refreshActivityLogsSection() {
+    loadActivityLogsSimpleData();
 }
 
 // ========================================
 // HELPER FUNCTIONS
 // ========================================
-function getActionColor(action) {
+function getActionColorHelper(action) {
     const colors = {
         'LOGIN': '#10b981',
         'LOGOUT': '#6b7280',
@@ -204,10 +206,10 @@ function getActionColor(action) {
 // ========================================
 // EXPOSE TO GLOBAL
 // ========================================
-window.toggleActivityLogs = toggleActivityLogs;
-window.loadActivityLogsSimple = loadActivityLogsSimple;
-window.refreshActivityLogs = refreshActivityLogs;
-window.filterActivityLogs = filterActivityLogs;
+window.toggleActivityLogsSection = toggleActivityLogsSection;
+window.loadActivityLogsSimpleData = loadActivityLogsSimpleData;
+window.refreshActivityLogsSection = refreshActivityLogsSection;
+window.filterActivityLogsSection = filterActivityLogsSection;
 
-console.log('✅ Admin Users Enhanced Page loaded');
+console.log('✅ Admin Users Page loaded (SIMPLE VERSION)');
 </script>

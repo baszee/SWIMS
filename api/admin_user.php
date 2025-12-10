@@ -1,7 +1,9 @@
 <?php
 /**
  * =========================================================
- * FILE: api/admin_user.php - Enhanced with Activity Logging
+ * FILE: api/admin_user.php - FIXED VERSION
+ * Enhanced with Activity Logging & Hard Delete Support
+ * FIX: Proper error handling & validation
  * =========================================================
  */
 
@@ -121,6 +123,10 @@ try {
             $stmt_old->execute([$id]);
             $old_data = $stmt_old->fetch();
 
+            if (!$old_data) {
+                api_response(false, "User tidak ditemukan.", null, 404);
+            }
+
             $sql = "UPDATE users SET role = ?, is_active = ?";
             $params = [$role, $is_active];
 
@@ -159,38 +165,104 @@ try {
             break;
 
         // ====================================================================
-        // DELETE: Deactivate user
+        // DELETE: Deactivate OR Hard Delete user
         // ====================================================================
         case 'DELETE':
             $id = $_GET['id'] ?? null;
+            $permanent = isset($_GET['permanent']) && $_GET['permanent'] === 'true';
+            
             if (!$id) {
                 api_response(false, "ID User wajib diisi.", null, 400);
             }
             
-            // Prevent self-deactivation
+            // Prevent self-deletion
             if ((int)$id === (int)$admin_id) {
-                api_response(false, "Anda tidak dapat menonaktifkan akun Anda sendiri.", null, 403);
+                api_response(false, "Anda tidak dapat menghapus akun Anda sendiri.", null, 403);
             }
             
             // Get username for logging
-            $stmt_user = $pdo->prepare("SELECT username FROM users WHERE id = ?");
+            $stmt_user = $pdo->prepare("SELECT username, role FROM users WHERE id = ?");
             $stmt_user->execute([$id]);
-            $target_username = $stmt_user->fetchColumn();
+            $target_user = $stmt_user->fetch();
             
-            // Deactivate user
-            $stmt = $pdo->prepare("UPDATE users SET is_active = FALSE WHERE id = ?");
-            $stmt->execute([$id]);
+            if (!$target_user) {
+                api_response(false, "User tidak ditemukan.", null, 404);
+            }
             
-            // Log deactivate action
-            $logger->log(
-                $admin_id,
-                $admin_username,
-                'DEACTIVATE',
-                "Deactivated user: {$target_username}",
-                ['target_user_id' => $id, 'target_username' => $target_username]
-            );
-
-            api_response(true, "User ID:{$id} berhasil di-nonaktifkan.", null);
+            $target_username = $target_user['username'];
+            $target_role = $target_user['role'];
+            
+            // Prevent deleting last admin
+            if ($target_role === 'admin') {
+                $stmt_count = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin' AND is_active = TRUE");
+                $admin_count = $stmt_count->fetchColumn();
+                
+                if ($admin_count <= 1) {
+                    api_response(false, "Tidak dapat menghapus admin terakhir. Minimal 1 admin harus ada.", null, 403);
+                }
+            }
+            
+            if ($permanent) {
+                // HARD DELETE - Remove from database
+                
+                // First, check if user has any related data that would cause FK constraint issues
+                // For now, we'll just delete the user directly
+                // In production, you might want to handle related data differently
+                
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+                    $result = $stmt->execute([$id]);
+                    
+                    if (!$result) {
+                        $errorInfo = $stmt->errorInfo();
+                        error_log("Delete user error: " . json_encode($errorInfo));
+                        api_response(false, "Gagal menghapus user: " . $errorInfo[2], null, 500);
+                    }
+                    
+                    // Log delete action
+                    $logger->log(
+                        $admin_id,
+                        $admin_username,
+                        'DELETE',
+                        "Permanently deleted user: {$target_username} (role: {$target_role})",
+                        [
+                            'deleted_user_id' => $id,
+                            'deleted_username' => $target_username,
+                            'deleted_role' => $target_role,
+                            'permanent' => true
+                        ]
+                    );
+                    
+                    api_response(true, "User '{$target_username}' berhasil dihapus secara permanen dari database.", null);
+                    
+                } catch (PDOException $e) {
+                    error_log("Delete user PDO error: " . $e->getMessage());
+                    
+                    // Check if it's a foreign key constraint error
+                    if (strpos($e->getMessage(), 'foreign key constraint') !== false || 
+                        strpos($e->getMessage(), 'Cannot delete') !== false) {
+                        api_response(false, "User tidak dapat dihapus karena masih memiliki data terkait di sistem (transaksi, item, dll). Gunakan Edit > Non-aktifkan untuk menonaktifkan user.", null, 409);
+                    } else {
+                        api_response(false, "Database error: " . $e->getMessage(), null, 500);
+                    }
+                }
+                
+            } else {
+                // SOFT DELETE - Just deactivate
+                $stmt = $pdo->prepare("UPDATE users SET is_active = FALSE WHERE id = ?");
+                $stmt->execute([$id]);
+                
+                // Log deactivate action
+                $logger->log(
+                    $admin_id,
+                    $admin_username,
+                    'DEACTIVATE',
+                    "Deactivated user: {$target_username}",
+                    ['target_user_id' => $id, 'target_username' => $target_username]
+                );
+                
+                api_response(true, "User '{$target_username}' berhasil di-nonaktifkan.", null);
+            }
             break;
 
         default:
@@ -199,6 +271,11 @@ try {
 
 } catch (\PDOException $e) {
     error_log("Database Error in admin_user.php: " . $e->getMessage());
-    api_response(false, "Kesalahan server database. Cek log.", null, 500);
+    error_log("Stack trace: " . $e->getTraceAsString());
+    api_response(false, "Kesalahan database: " . $e->getMessage(), null, 500);
+} catch (\Exception $e) {
+    error_log("General Error in admin_user.php: " . $e->getMessage());
+    error_log("Stack trace: " . $e->getTraceAsString());
+    api_response(false, "Kesalahan server: " . $e->getMessage(), null, 500);
 }
 ?>
