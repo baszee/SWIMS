@@ -39,9 +39,8 @@ session_start();
   <script src="js/approval.js"></script>
   <script src="js/notes.js"></script>
   <script src="js/history_transaksi.js"></script>
-  
-  <!-- ⭐ TAMBAHKAN INI - Request Item Module -->
   <script src="js/request_item.js"></script>
+  <script src="js/inventory.js"></script>
   
   <script>
     // Inisialisasi aplikasi
@@ -53,7 +52,7 @@ session_start();
   <!-- ⭐ TAMBAHKAN INI -->
   <script src="js/inventory.js"></script>
   
-  <script>
+  <script>  
     // Inisialisasi aplikasi
     checkSessionAndRender(); 
   </script>

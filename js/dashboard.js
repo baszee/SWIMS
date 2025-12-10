@@ -275,4 +275,173 @@ console.log('   Exposed functions:', {
     init_supervisor: typeof window.init_supervisor,
     init_admin: typeof window.init_admin,
     init_owner: typeof window.init_owner
-});
+})
+
+/**
+ * =========================================================
+ * DASHBOARD.JS - ADMIN PART ONLY (FIXED & CLEAN)
+ * Tambahkan ini di bagian akhir file dashboard.js yang sudah ada
+ * =========================================================
+ */
+
+/* init_admin - Dashboard Admin - SIMPLE VERSION */
+function init_admin(){
+    console.log('📊 Init Admin Dashboard v2.0 - CLEAN');
+    loadAdminDashboardSimple();
+}
+
+async function loadAdminDashboardSimple() {
+    console.log('Loading admin dashboard...');
+    const dashboardDiv = document.getElementById('adminDashboard');
+    
+    if (!dashboardDiv) {
+        console.error('❌ Element adminDashboard tidak ditemukan!');
+        return;
+    }
+    
+    dashboardDiv.innerHTML = '<div class="card"><p style="text-align:center;">⏳ Memuat dashboard...</p></div>';
+    showLoadingModal('Mengambil data admin...');
+    
+    try {
+        // Fetch user data
+        const response = await fetch('api/admin_user.php');
+        const data = await response.json();
+        
+        if (!data.success) {
+            dashboardDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message}</p></div>`;
+            return;
+        }
+
+        // Calculate statistics
+        const totalUsers = data.data.length;
+        const activeUsers = data.data.filter(u => u.is_active == 1).length;
+        const inactiveUsers = data.data.filter(u => u.is_active == 0).length;
+        
+        // Count by role
+        const roleCount = {
+            admin: data.data.filter(u => u.role === 'admin').length,
+            staff: data.data.filter(u => u.role === 'staff').length,
+            supervisor: data.data.filter(u => u.role === 'supervisor').length,
+            owner: data.data.filter(u => u.role === 'owner').length
+        };
+
+        // Get recent users (5 latest)
+        const recentUsers = data.data.slice(0, 5);
+
+        let html = `
+            <div class="card">
+                <h2>👨‍💼 Admin Dashboard</h2>
+                <p class="small">Selamat datang, <b>${currentUser().username}</b>! Berikut adalah ringkasan pengguna sistem SWIMS.</p>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+                <div class="stat-box" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="stat-label">Total User</div>
+                    <div class="stat-value">${totalUsers}</div>
+                    <p class="small" style="margin-top:8px; opacity:0.9;">Terdaftar di sistem</p>
+                </div>
+                <div class="stat-box success">
+                    <div class="stat-label">User Aktif</div>
+                    <div class="stat-value">${activeUsers}</div>
+                    <p class="small" style="margin-top:8px; opacity:0.9;">Dapat login</p>
+                </div>
+                <div class="stat-box danger">
+                    <div class="stat-label">User Non-aktif</div>
+                    <div class="stat-value">${inactiveUsers}</div>
+                    <p class="small" style="margin-top:8px; opacity:0.9;">Tidak dapat login</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Statistik Berdasarkan Role</h3>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:16px;">
+                    <div class="stat-box" style="background:#3b82f6;">
+                        <div class="stat-label">Admin</div>
+                        <div class="stat-value">${roleCount.admin}</div>
+                    </div>
+                    <div class="stat-box" style="background:#8b5cf6;">
+                        <div class="stat-label">Staff</div>
+                        <div class="stat-value">${roleCount.staff}</div>
+                    </div>
+                    <div class="stat-box" style="background:#ec4899;">
+                        <div class="stat-label">Supervisor</div>
+                        <div class="stat-value">${roleCount.supervisor}</div>
+                    </div>
+                    <div class="stat-box" style="background:#f59e0b;">
+                        <div class="stat-label">Owner</div>
+                        <div class="stat-value">${roleCount.owner}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">👥 User Terbaru (5 Terakhir)</h3>
+                    <button class="btn primary" onclick="loadPage('admin_users')">Lihat Semua User</button>
+                </div>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Terdaftar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Render recent users
+        recentUsers.forEach(user => {
+            const statusBadge = user.is_active == 1 
+                ? '<span class="badge badge-success">Aktif</span>' 
+                : '<span class="badge badge-danger">Non-aktif</span>';
+            
+            html += `
+                <tr>
+                    <td>${user.id}</td>
+                    <td><b>${user.username}</b></td>
+                    <td><span class="role-badge">${user.role}</span></td>
+                    <td>${statusBadge}</td>
+                    <td>${user.created_at.substring(0, 10)}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card" style="background:#f0f9ff; border-left:4px solid #3b82f6;">
+                <h3 style="margin-top:0; color:#1e40af;">💡 Tips Administrator</h3>
+                <ul style="margin:0; padding-left:20px; color:#1e3a8a;">
+                    <li><strong>User Management:</strong> Kelola akun pengguna sistem SWIMS</li>
+                    <li><strong>View Stock:</strong> Monitor stok gudang (read-only)</li>
+                    <li><strong>Security:</strong> Admin tidak dapat mengubah stok secara langsung</li>
+                    <li><strong>Best Practice:</strong> Gunakan password yang kuat dan ganti secara berkala</li>
+                </ul>
+            </div>
+        `;
+        
+        dashboardDiv.innerHTML = html;
+
+    } catch (error) {
+        dashboardDiv.innerHTML = `
+            <div class="card">
+                <p class="small" style="color:var(--danger);">Error saat memuat data: ${error.message}</p>
+                <button class="btn primary" onclick="loadAdminDashboardSimple()">🔄 Coba Lagi</button>
+            </div>
+        `;
+        console.error('Admin dashboard load error:', error);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
+// Expose functions
+window.init_admin = init_admin;
+window.loadAdminDashboardSimple = loadAdminDashboardSimple;
+
+console.log('✅ Admin Dashboard Module (Fixed) loaded');
