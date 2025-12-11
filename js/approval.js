@@ -1,7 +1,7 @@
 /**
  * =========================================================
- * APPROVAL.JS - FINAL FIXED VERSION
- * Fitur: Approval Transaksi & Supplier (Acc/Reject)
+ * APPROVAL.JS - FIXED VERSION with PDF Download
+ * Fitur: Approval Transaksi & Supplier (Acc/Reject) + PDF Nota
  * =========================================================
  */
 
@@ -22,7 +22,6 @@ function init_approval_items() {
     console.log('🚀 Init Approval Suppliers Only');
     const content = document.getElementById('content');
     
-    // Tampilan khusus Approval Supplier (Tanpa Tab)
     content.innerHTML = `
         <div class="card">
             <h2>✅ Approval Klien/Supplier Baru</h2>
@@ -175,13 +174,16 @@ async function handleApprovalAction(action, id, transactionData = null) {
                 
                 if (data.success) {
                     if (isApprove && action === 'approve_transaction' && transactionData) {
+                        // Store transaction data for PDF generation
                         currentApprovedTransaction = transactionData;
-                        showNotaModal(transactionData);
+                        
+                        // Show success modal with PDF download option
+                        showApprovalSuccessModal(transactionData);
                     } else {
                         showMessageModal('✅ Sukses', data.message, false);
                     }
                     
-                    // Reload data yang sesuai
+                    // Reload data
                     if (action.includes('transaction')) loadApprovalData('transactions');
                     else if (action.includes('supplier')) loadApprovalData('suppliers');
                     
@@ -198,6 +200,288 @@ async function handleApprovalAction(action, id, transactionData = null) {
             }
         }
     );
+}
+
+// ========================================
+// SHOW APPROVAL SUCCESS MODAL WITH PDF OPTION
+// ========================================
+function showApprovalSuccessModal(transaction) {
+    const notaNumber = `NOTE-${transaction.id}-${Date.now().toString().slice(-6)}`;
+    
+    const modalContent = `
+        <div style="text-align:center;">
+            <div style="font-size:3rem; margin-bottom:10px;">✅</div>
+            <h3 style="color:var(--success); margin:0 0 10px 0;">Transaksi Berhasil Di-Approve!</h3>
+            
+            <div style="background:#f0f9ff; padding:15px; border-radius:8px; margin:20px 0; text-align:left;">
+                <h4 style="margin:0 0 10px 0; color:#1e40af;">📋 Detail Transaksi:</h4>
+                <table style="width:100%; font-size:0.9rem;">
+                    <tr>
+                        <td style="padding:5px 0;"><strong>Kode Transaksi:</strong></td>
+                        <td style="padding:5px 0;">${transaction.transaction_code}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:5px 0;"><strong>Type:</strong></td>
+                        <td style="padding:5px 0;">${transaction.type === 'IN' ? '📦 BARANG MASUK' : '📤 BARANG KELUAR'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:5px 0;"><strong>Item:</strong></td>
+                        <td style="padding:5px 0;">${transaction.item_name} (${transaction.sku})</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:5px 0;"><strong>Quantity:</strong></td>
+                        <td style="padding:5px 0;"><strong>${transaction.quantity}</strong> ${transaction.unit || 'pcs'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:5px 0;"><strong>Requester:</strong></td>
+                        <td style="padding:5px 0;">${transaction.requester_name}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div style="background:#dcfce7; padding:15px; border-radius:8px; margin:20px 0; border-left:4px solid var(--success);">
+                <p style="margin:0; font-weight:600; color:#166534;">
+                    💾 Download nota PDF dengan QR code untuk dokumentasi dan verifikasi
+                </p>
+            </div>
+            
+            <div style="display:flex; gap:12px; justify-content:center; margin-top:20px;">
+                <button class="btn success" onclick="generateNotaPDFFromApproval()">
+                    📄 Download PDF Nota
+                </button>
+                <button class="btn primary" onclick="closeApprovalSuccessModal()">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    `;
+    
+    showMessageModal('Approval Berhasil', modalContent, false);
+}
+
+// ========================================
+// GENERATE PDF FROM APPROVAL
+// ========================================
+async function generateNotaPDFFromApproval() {
+    if (!currentApprovedTransaction) {
+        showMessageModal('Error', 'Data transaksi tidak tersedia', false);
+        return;
+    }
+    
+    console.log('📄 Generating PDF for approved transaction:', currentApprovedTransaction.transaction_code);
+    
+    showLoadingModal('Generating PDF...');
+    
+    try {
+        // Check if jsPDF is available
+        if (typeof window.jspdf === 'undefined') {
+            throw new Error('jsPDF library not loaded!');
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // ========================================
+        // PDF HEADER
+        // ========================================
+        doc.setFontSize(20);
+        doc.setFont(undefined, 'bold');
+        doc.text('SWIMS - NOTA TRANSAKSI', 105, 20, { align: 'center' });
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text('Secure Warehouse Inventory Management System', 105, 27, { align: 'center' });
+        
+        // Horizontal line
+        doc.setLineWidth(0.5);
+        doc.line(20, 32, 190, 32);
+        
+        // ========================================
+        // TRANSACTION INFO
+        // ========================================
+        let y = 42;
+        
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text('TRANSACTION INFORMATION', 20, y);
+        
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        const approvalDate = new Date().toLocaleString('id-ID');
+        const approverName = currentUser()?.username || 'Supervisor';
+        
+        const info = [
+            ['Transaction Code:', currentApprovedTransaction.transaction_code],
+            ['Type:', currentApprovedTransaction.type === 'IN' ? 'BARANG MASUK' : 'BARANG KELUAR'],
+            ['Status:', 'APPROVED'],
+            ['Approval Date:', approvalDate],
+            ['Requester:', currentApprovedTransaction.requester_name],
+            ['Approver:', approverName]
+        ];
+        
+        info.forEach(([label, value]) => {
+            doc.setFont(undefined, 'bold');
+            doc.text(label, 20, y);
+            doc.setFont(undefined, 'normal');
+            doc.text(String(value), 70, y);
+            y += 6;
+        });
+        
+        // ========================================
+        // ITEM DETAILS
+        // ========================================
+        y += 5;
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text('ITEM DETAILS', 20, y);
+        
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        
+        const itemInfo = [
+            ['SKU:', currentApprovedTransaction.sku],
+            ['Item Name:', currentApprovedTransaction.item_name],
+            ['Quantity:', `${currentApprovedTransaction.quantity} ${currentApprovedTransaction.unit || 'pcs'}`]
+        ];
+        
+        if (currentApprovedTransaction.supplier_name) {
+            itemInfo.push(['Supplier:', currentApprovedTransaction.supplier_name]);
+        }
+        
+        if (currentApprovedTransaction.recipient_name) {
+            itemInfo.push(['Recipient:', currentApprovedTransaction.recipient_name]);
+            if (currentApprovedTransaction.recipient_address) {
+                itemInfo.push(['Address:', currentApprovedTransaction.recipient_address]);
+            }
+        }
+        
+        itemInfo.forEach(([label, value]) => {
+            doc.setFont(undefined, 'bold');
+            doc.text(label, 20, y);
+            doc.setFont(undefined, 'normal');
+            
+            const maxWidth = 110;
+            const lines = doc.splitTextToSize(String(value), maxWidth);
+            doc.text(lines, 70, y);
+            y += (lines.length * 6);
+        });
+        
+        // ========================================
+        // QR CODE
+        // ========================================
+        y += 10;
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'bold');
+        doc.text('VERIFICATION QR CODE', 20, y);
+        
+        y += 5;
+        
+        // Generate compact QR data
+        const qrData = generateCompactQRData(currentApprovedTransaction);
+        console.log('QR Data:', qrData);
+        
+        // Generate QR Code
+        const qrContainer = document.createElement('div');
+        qrContainer.style.display = 'none';
+        document.body.appendChild(qrContainer);
+        
+        await new Promise((resolve) => {
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(qrContainer, {
+                    text: qrData,
+                    width: 128,
+                    height: 128,
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                
+                setTimeout(() => {
+                    const qrImage = qrContainer.querySelector('img');
+                    if (qrImage) {
+                        doc.addImage(qrImage.src, 'PNG', 20, y, 40, 40);
+                    }
+                    document.body.removeChild(qrContainer);
+                    resolve();
+                }, 100);
+            } else {
+                console.warn('QRCode.js not available');
+                document.body.removeChild(qrContainer);
+                resolve();
+            }
+        });
+        
+        // QR Code info
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'italic');
+        doc.text('Scan QR code untuk verifikasi', 20, y + 45);
+        doc.text('digital signature nota', 20, y + 49);
+        
+        // ========================================
+        // FOOTER
+        // ========================================
+        const footerY = 280;
+        doc.setLineWidth(0.3);
+        doc.line(20, footerY, 190, footerY);
+        
+        doc.setFontSize(8);
+        doc.setFont(undefined, 'normal');
+        doc.text('Generated by SWIMS - Secure Warehouse Inventory Management System', 105, footerY + 5, { align: 'center' });
+        doc.text(`Generated at: ${new Date().toLocaleString('id-ID')}`, 105, footerY + 9, { align: 'center' });
+        doc.text('This is a computer-generated document. No signature required.', 105, footerY + 13, { align: 'center' });
+        
+        // ========================================
+        // SAVE PDF
+        // ========================================
+        const filename = `NOTA_${currentApprovedTransaction.transaction_code}_${Date.now()}.pdf`;
+        doc.save(filename);
+        
+        console.log('✅ PDF generated:', filename);
+        
+        // Close the approval success modal
+        closeApprovalSuccessModal();
+        
+        showMessageModal(
+            '✅ PDF Generated!',
+            `Nota PDF <strong>${filename}</strong> berhasil didownload.<br><br>
+            <span class="small">File tersimpan di folder Downloads browser Anda.</span>`,
+            false
+        );
+        
+    } catch (error) {
+        console.error('❌ PDF generation error:', error);
+        showMessageModal(
+            '❌ Error',
+            `Gagal generate PDF: ${error.message}<br><br>
+            <span class="small">Pastikan library jsPDF dan QRCode.js sudah ter-load.</span>`,
+            false
+        );
+    } finally {
+        hideLoadingModal();
+    }
+}
+
+// ========================================
+// HELPER: Generate Compact QR Data
+// ========================================
+function generateCompactQRData(transaction) {
+    const date = new Date().toISOString().substring(0, 10).replace(/-/g, '');
+    return `SWIMS|${transaction.transaction_code}|${transaction.type}|${transaction.sku}|${transaction.quantity}|APPROVED|${date}`;
+}
+
+// ========================================
+// CLOSE APPROVAL SUCCESS MODAL
+// ========================================
+function closeApprovalSuccessModal() {
+    // Find and close the custom modal
+    const modal = document.getElementById('customModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    
+    // Clear stored transaction
+    currentApprovedTransaction = null;
 }
 
 // ========================================
@@ -218,46 +502,11 @@ function filterTransactions(type) {
 }
 
 // ========================================
-// NOTA & PDF
+// LEGACY NOTA MODAL (Keep for compatibility)
 // ========================================
-
-function showNotaModal(transaction) {
-    const modal = document.getElementById('notaModal');
-    const detailsDiv = document.getElementById('notaDetails');
-    const qrContainer = document.getElementById('qrCodeContainer');
-    const notaNumber = `NOTE-${Date.now()}`;
-    
-    detailsDiv.innerHTML = `
-        <p><strong>No Nota:</strong> ${notaNumber}</p>
-        <p><strong>Kode:</strong> ${transaction.transaction_code}</p>
-        <p><strong>Item:</strong> ${transaction.item_name}</p>
-        <p><strong>Jumlah:</strong> ${transaction.quantity} ${transaction.unit}</p>
-        <p><strong>Disetujui:</strong> ${currentUser().username}</p>
-    `;
-    
-    qrContainer.innerHTML = '<div id="qrcode"></div>';
-    const qrData = `TXN-${transaction.transaction_code}|STATUS-APPROVED`;
-    
-    if (typeof QRCode !== 'undefined') {
-        new QRCode(document.getElementById('qrcode'), { text: qrData, width: 150, height: 150 });
-    }
-    
-    modal.style.display = 'flex';
-}
-
 function closeNotaModal() {
-    document.getElementById('notaModal').style.display = 'none';
-}
-
-function downloadNota() {
-    if (!currentApprovedTransaction) return;
-    // Logika PDF Sederhana (Text fallback)
-    const blob = new Blob([JSON.stringify(currentApprovedTransaction, null, 2)], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Nota_${currentApprovedTransaction.transaction_code}.txt`;
-    a.click();
+    const modal = document.getElementById('notaModal');
+    if (modal) modal.style.display = 'none';
 }
 
 // ========================================
@@ -268,7 +517,8 @@ window.init_approval_items = init_approval_items;
 window.loadApprovalData = loadApprovalData;
 window.handleApprovalAction = handleApprovalAction;
 window.filterTransactions = filterTransactions;
+window.generateNotaPDFFromApproval = generateNotaPDFFromApproval;
+window.closeApprovalSuccessModal = closeApprovalSuccessModal;
 window.closeNotaModal = closeNotaModal;
-window.downloadNota = downloadNota;
 
-console.log('✅ Approval Module Loaded');
+console.log('✅ Approval Module Loaded with PDF Support');

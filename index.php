@@ -24,16 +24,12 @@ session_start();
 
   <main id="content" class="container"></main>
 
-  <!-- QR code lib (Untuk fitur Supervisor Notes) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <!-- Chart.js untuk visualisasi -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-  <!-- jsPDF untuk PDF Generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-  <!-- Load JavaScript Logic - URUTAN PENTING! -->
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/user_management.js"></script> 
@@ -44,19 +40,9 @@ session_start();
   <script src="js/history_transaksi.js"></script>
   <script src="js/request_item.js"></script>
   <script src="js/inventory.js"></script>
-  <script src="js/activity_logs.js"></script> <!-- ⭐ NEW -->
+  <script src="js/activity_logs.js"></script>
     
   <script>
-    // Inisialisasi aplikasi
-    checkSessionAndRender(); 
-  </script>
-  
-  <script src="js/history_transaksi.js"></script>
-  
-  <!-- ⭐ TAMBAHKAN INI -->
-  <script src="js/inventory.js"></script>
-  
-  <script>  
     // Inisialisasi aplikasi
     checkSessionAndRender(); 
   </script>
