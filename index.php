@@ -28,7 +28,7 @@ session_start();
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <!-- Chart.js untuk visualisasi -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <!-- jsPDF untuk PDF Generator -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -44,7 +44,8 @@ session_start();
   <script src="js/history_transaksi.js"></script>
   <script src="js/request_item.js"></script>
   <script src="js/inventory.js"></script>
-  
+  <script src="js/activity_logs.js"></script> <!-- ⭐ NEW -->
+    
   <script>
     // Inisialisasi aplikasi
     checkSessionAndRender(); 

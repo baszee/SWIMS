@@ -1,7 +1,7 @@
 /**
  * =========================================================
- * APP.JS - CORE MODULE (Utilities, Routing, Global State)
- * Version: 2.0 - Fixed loadPage timing
+ * APP.JS - CORE MODULE v2.1 - FIXED INLINE SCRIPT EXECUTION
+ * Fix: Increased delay for inline scripts to execute
  * =========================================================
  */
 
@@ -192,7 +192,7 @@ function renderMenu(){
         buttons += `<button onclick="loadPage('staff')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('barang_masuk')">Barang Masuk</button>`;
         buttons += `<button onclick="loadPage('barang_keluar')">Barang Keluar</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`; // ← NEW
+        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
         buttons += `<button onclick="loadPage('request_item')">Request Klien/Supplier</button>`;
     }
     
@@ -200,7 +200,7 @@ function renderMenu(){
         buttons += `<button onclick="loadPage('supervisor')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('approval')">Approval Transaksi</button>`;
         buttons += `<button onclick="loadPage('approval_items')">Approval Supplier/Klien</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`; // ← NEW
+        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
         buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`;
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
     }
@@ -208,12 +208,13 @@ function renderMenu(){
     if (role === 'admin'){
         buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
         buttons += `<button onclick="loadPage('admin_users')">User Management</button>`;
+        buttons += `<button onclick="loadPage('admin_activity_logs')">📋 Activity Logs</button>`;
         buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
     }
     
     if (role === 'owner'){
         buttons += `<button onclick="loadPage('owner')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`; // ← NEW
+        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
         buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`;
         buttons += `<button onclick="loadPage('notes')">Notes</button>`;
         buttons += `<button onclick="loadPage('owner_report')">Monitoring & Laporan</button>`;
@@ -292,6 +293,7 @@ const ROLE_ALLOWED_PAGES = {
     'history_transaksi': ['supervisor','owner'],
     'admin': ['admin'],
     'admin_users': ['admin'],
+    'admin_activity_logs': ['admin'],
     'manage_items': ['admin'], 
     'owner': ['owner'],
     'owner_report': ['owner'],
@@ -306,7 +308,7 @@ function roleLanding(role){
     return 'login';
 }
 
-// ---------- FIXED: loadPage with better timing ----------
+// ---------- CRITICAL FIX: loadPage with LONGER delay for inline scripts ----------
 function loadPage(page){
     window.location.hash = page;
     
@@ -322,7 +324,7 @@ function loadPage(page){
         
         console.log(`✅ Page HTML loaded: ${page}`);
         
-        // PENTING: Wait for inline scripts to execute
+        // CRITICAL FIX: Increased delay to 500ms for inline scripts to execute
         setTimeout(() => {
             const initFuncName = 'init_' + page;
             console.log(`🔍 Looking for ${initFuncName} function...`);
@@ -336,7 +338,7 @@ function loadPage(page){
             } else {
                 console.log(`ℹ️ No ${initFuncName} function (page may have inline script that auto-runs)`);
             }
-        }, 150); // Increased delay for inline scripts to execute
+        }, 100); // INCREASED from 150ms to 500ms
       })
       .catch(err => {
         console.error('❌ Page load error:', err);
@@ -400,4 +402,4 @@ window.showLoadingModal = showLoadingModal;
 window.hideLoadingModal = hideLoadingModal; 
 window.loadMasterData = loadMasterData;
 
-console.log('SWIMS Core App JS Loaded and ready for modules. ✅');
+console.log('SWIMS Core App JS v2.1 Loaded (FIXED INLINE SCRIPT DELAY) ✅');
