@@ -65,7 +65,7 @@ async function loadStaffDashboard() {
 }
 
 // ========================================
-// SUPERVISOR DASHBOARD MODULE (FIXED RACE CONDITION)
+// SUPERVISOR DASHBOARD MODULE
 // ========================================
 
 /* init_supervisor - Dashboard Supervisor */
@@ -254,6 +254,83 @@ async function loadRecentItems() {
 }
 
 // ========================================
+// OWNER DASHBOARD MODULE
+// ========================================
+/* init_owner - Dashboard Owner */
+function init_owner(){
+    console.log('📊 Init Owner Dashboard (unified)');
+    loadOwnerDashboard();
+}
+
+async function loadOwnerDashboard() {
+    const statsDiv = document.getElementById('ownerStats');
+    const warningDiv = document.getElementById('lowStockWarning');
+    
+    if (!statsDiv || !warningDiv) return;
+    
+    statsDiv.innerHTML = '<div class="card"><p>Memuat statistik...</p></div>';
+    warningDiv.innerHTML = '';
+    showLoadingModal('Mengambil data ringkasan Owner...');
+
+    try {
+        const user = currentUser();
+        if (!user) return;
+        
+        // Fetch data from api/report.php?action=summary
+        const response = await fetch('api/report.php?action=summary');
+        const data = await response.json();
+        
+        if (!data.success) {
+            statsDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message}</p></div>`;
+            return;
+        }
+
+        const stats = data.data;
+
+        // 1. Rendering Statistik
+        statsDiv.innerHTML = `
+            <div class="stat-box" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="stat-label">Total Jenis Barang</div>
+                <div class="stat-value">${stats.total_items.toLocaleString()}</div>
+            </div>
+            <div class="stat-box" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <div class="stat-label">Total Stok Semua Item</div>
+                <div class="stat-value">${stats.total_stock.toLocaleString()} Pcs</div>
+            </div>
+            <div class="stat-box warn">
+                <div class="stat-label">Pending Transaksi</div>
+                <div class="stat-value">${stats.transactions.pending}</div>
+            </div>
+            <div class="stat-box success">
+                <div class="stat-label">Approved Transaksi</div>
+                <div class="stat-value">${stats.transactions.approved}</div>
+            </div>
+            <div class="stat-box danger">
+                <div class="stat-label">Item Baru PENDING Approval</div>
+                <div class="stat-value">${stats.pending_items}</div>
+            </div>
+        `;
+        
+        // 2. Rendering Peringatan Stok Rendah
+        if (stats.low_stock > 0) {
+            warningDiv.innerHTML = `
+                <div class="card" style="margin-top:16px; background:#fef3c7; border-color:#f59e0b;">
+                    <h4 style="margin-top:0; color:var(--warning);">🚨 PERINGATAN STOK RENDAH</h4>
+                    <p style="color:#92400e; margin:0;">Terdapat **${stats.low_stock}** jenis item yang sudah mencapai atau di bawah Stok Minimum. Mohon periksa Laporan Inventaris.</p>
+                </div>
+            `;
+        }
+
+    } catch (error) {
+        statsDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error Jaringan: Gagal mengambil data dashboard Owner.</p></div>`;
+        console.error('Owner Dashboard load error:', error);
+    } finally {
+        hideLoadingModal();
+    }
+}
+
+
+// ========================================
 // ADMIN DASHBOARD MODULE
 // ========================================
 /* init_admin - Dashboard Admin - SIMPLE VERSION */
@@ -413,25 +490,17 @@ async function loadAdminDashboardSimple() {
 }
 
 
-/* init_owner - Dashboard Owner */
-function init_owner(){
-    console.log('📊 Init Owner Dashboard');
-    if(typeof loadOwnerDashboard === 'function') {
-        loadOwnerDashboard();
-    }
-}
-
 // Expose init functions and helpers
 window.init_staff = init_staff;
 window.loadStaffDashboard = loadStaffDashboard;
 window.init_supervisor = init_supervisor;
-window.loadSupervisorDashboard = loadSupervisorDashboard; // Expose main function
-window.loadSupervisorStats = loadSupervisorStats; // Expose stats for approval.js
-window.loadRecentTransactions = loadRecentTransactions; // Expose recent transactions
-window.loadRecentItems = loadRecentItems; // Expose recent items
+window.loadSupervisorDashboard = loadSupervisorDashboard; 
+window.loadSupervisorStats = loadSupervisorStats; 
+window.loadRecentTransactions = loadRecentTransactions; 
+window.loadRecentItems = loadRecentItems; 
+window.init_owner = init_owner; 
+window.loadOwnerDashboard = loadOwnerDashboard; 
 window.init_admin = init_admin;
-window.loadAdminDashboard = loadAdminDashboard;
-window.loadAdminDashboardSimple = loadAdminDashboardSimple; // Expose simplified admin dashboard
-window.init_owner = init_owner;
+window.loadAdminDashboardSimple = loadAdminDashboardSimple;
 
 console.log('✅ Dashboard Module loaded (Unified)');
