@@ -348,3 +348,9 @@
 [2025-12-10 14:44:00] User authenticated - ID: 2, Role: staff
 [2025-12-10 14:44:00] GET action: my_requests
 [2025-12-10 14:44:00] Found 3 requests for user 2
+[2025-12-11 09:32:34] GET request from staff1
+[2025-12-11 09:32:34] User authenticated - ID: 2, Role: staff
+[2025-12-11 09:32:34] GET action: list
+[2025-12-11 09:33:46] GET request from staff1
+[2025-12-11 09:33:46] User authenticated - ID: 2, Role: staff
+[2025-12-11 09:33:46] GET action: list
