@@ -388,17 +388,24 @@ function loadPage(page){
     
     console.log(`📄 Loading page: ${page}`);
     
-    // Update header
+    // HIDE LOADING MODAL SEBELUM PROSES PAGE CHANGE
+    hideLoadingModal(); 
+
+    // Update header (will be handled by checkSessionAndRender on hash change if needed)
     updatePageHeader(page);
     
     // Update active nav
     updateActiveNavItem();
     
-    // Show/hide sidebar based on page
+    const contentHeader = document.getElementById('contentHeader');
+
+    // Show/hide sidebar and content header based on page
     if (page === 'login') {
         hideSidebar();
+        if (contentHeader) contentHeader.style.display = 'none';
     } else {
         showSidebar();
+        if (contentHeader) contentHeader.style.display = 'block'; // Ensure header is shown after login
     }
     
     fetch(`pages/${page}.php`) 
@@ -411,6 +418,7 @@ function loadPage(page){
         
         console.log(`✅ Page HTML loaded: ${page}`);
         
+        // Minimal delay untuk memastikan DOM ter-render sebelum memanggil init function
         setTimeout(() => {
             const initFuncName = 'init_' + page;
             console.log(`🔍 Looking for ${initFuncName} function...`);
@@ -498,5 +506,9 @@ window.loadMasterData = loadMasterData;
 window.setRoleColor = setRoleColor;
 window.renderSidebarUser = renderSidebarUser;
 window.renderSidebarNav = renderSidebarNav;
+window.setRoleColor = setRoleColor;
+window.renderSidebarUser = renderSidebarUser;
+window.renderSidebarNav = renderSidebarNav;
+window.ROLE_COLORS = ROLE_COLORS; // EXPOSE ROLE COLORS
 
-console.log('✅ SWIMS Core App JS v3.0 Loaded (SIDEBAR LAYOUT)');
+console.log('✅ SWIMS Core App JS v3.1 Loaded (FIXED)');

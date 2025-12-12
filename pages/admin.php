@@ -1,18 +1,13 @@
-<!-- ============================================================================
-FILE: pages/admin.php - SIMPLE & CLEAN VERSION (NO ERROR)
-============================================================================ -->
-
-<div id="adminDashboard">
-    <!-- Dashboard akan di-load oleh init_admin() di js/dashboard.js -->
-    <div class="card">
-        <p style="text-align:center;">
-            <span style="font-size:2rem;">⏳</span><br>
-            Memuat dashboard admin...
-        </p>
-    </div>
+<!-- ADMIN -->
+<div class="page-welcome card">
+  <h2 style="margin:0;">Admin Dashboard</h2>
+  <p class="small" style="margin-top:6px;">Selamat datang, <b id="adminName">Loading...</b></p>
 </div>
 
-<script>
-// NO INLINE LOGIC - Semua ada di dashboard.js
-console.log('✅ pages/admin.php loaded - waiting for init_admin()');
-</script>
+<div id="adminDashboard" class="stat-grid" aria-live="polite">
+  <!-- admin dashboard akan dirender oleh JS: ringkasan + breakdown role -->
+  <div class="stat-card">
+    <div class="label">Memuat...</div>
+    <div class="value">—</div>
+  </div>
+</div>

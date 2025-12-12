@@ -1,5 +1,5 @@
 /* ============================================================================
-   SWIMS SIDEBAR LAYOUT v2.0 - Role-Based Color Palette
+   SWIMS SIDEBAR LAYOUT v2.1 - Role-Based Color Palette (Updated)
    ============================================================================ */
 
 /* ========================================
@@ -15,8 +15,8 @@
   /* Base Colors */
   --bg-main: #F8F8F8;        /* Bone White */
   --bg-card: #FFFFFF;        /* Pure White */
-  --text-main: #2D3748;      /* Deep Slate */
-  --text-muted: #718096;     /* Light Slate */
+  --text-main: #3C4048;      /* Deep Slate */
+  --text-muted: #9FA6B2;     /* Light Slate */
   
   /* Status Colors */
   --success: #16A34A;        /* Forest Green */
@@ -32,6 +32,30 @@
   /* Dynamic Role Color (will be set by JS) */
   --current-role-color: #D96236; /* Default: Admin */
 }
+
+/* ========================================
+   LOGIN PAGE DYNAMIC CARD STYLES
+   ======================================== */
+.card.login-admin {
+  border: 2px solid var(--role-admin);
+  box-shadow: 0 0 15px rgba(217, 98, 54, 0.4);
+}
+
+.card.login-owner {
+  border: 2px solid var(--role-owner);
+  box-shadow: 0 0 15px rgba(31, 69, 111, 0.4);
+}
+
+.card.login-supervisor {
+  border: 2px solid var(--role-supervisor);
+  box-shadow: 0 0 15px rgba(68, 124, 79, 0.4);
+}
+
+.card.login-staff {
+  border: 2px solid var(--role-staff);
+  box-shadow: 0 0 15px rgba(125, 68, 125, 0.4);
+}
+
 
 /* ========================================
    RESET & BASE
@@ -463,7 +487,7 @@ textarea {
 }
 
 /* ========================================
-   STAT BOXES
+   STAT BOXES (original)
    ======================================== */
 .stat-box {
   background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.2) 100%);
@@ -677,4 +701,98 @@ hr {
   .main-content {
     margin-left: 0;
   }
+}
+
+/* ============================================================================
+   ADDITIONAL: Compact & Modern Stat Cards (override / improved layout)
+   ============================================================================ */
+
+/* ---------- Stat grid (lebih compact & responsive) ---------- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat( auto-fit, minmax(220px, 1fr) );
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+/* ---------- Stat card (compact, center content) ---------- */
+.stat-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(0,0,0,0.03));
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--text-main);
+  box-shadow: 0 6px 18px rgba(18,23,34,0.06);
+  border: 1px solid rgba(14,20,30,0.03);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+/* Accent stripe on top using current role color */
+.stat-card::before {
+  content: "";
+  display: block;
+  height: 6px;
+  width: 100%;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  margin: -18px -18px 12px -18px;
+  background: linear-gradient(90deg, var(--current-role-color), rgba(0,0,0,0.06));
+}
+
+/* Label + value */
+.stat-card .label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.stat-card .value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1;
+}
+
+/* Small helper line under value (optional) */
+.stat-card .sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* hover */
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(18,23,34,0.10);
+}
+
+/* color variants (optional) */
+.stat-card.success .value { color: var(--success); }
+.stat-card.warning .value { color: var(--warning); }
+.stat-card.danger .value { color: var(--danger); }
+
+/* ensure full-width on small screens is not too tall */
+@media (max-width: 420px) {
+  .stat-card { min-height: 88px; padding: 12px; }
+  .stat-card .value { font-size: 1.6rem; }
+}
+
+/* optional: make welcome block match design */
+.page-welcome {
+  background: var(--bg-card);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 10px rgba(18,23,34,0.04);
+}
+
+/* Accessibility & minor tweaks */
+[aria-live] {
+  outline: none;
 }
