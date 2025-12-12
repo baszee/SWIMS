@@ -796,3 +796,113 @@ hr {
 [aria-live] {
   outline: none;
 }
+
+/* ============================
+   ADMIN-SPECIFIC OVERRIDES
+   ============================ */
+
+/* Target only admin dashboard container so other roles keep compact cards */
+#adminDashboard {
+  /* keep admin sections full-width and stacked */
+  display: block !important;
+  width: 100%;
+}
+
+/* Ensure any grid inside admin dashboard becomes stacked block */
+#adminDashboard .stat-grid {
+  display: block !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+  margin-bottom: 16px !important;
+}
+
+/* Full-width admin stat box — visible colored band using role color */
+#adminDashboard .admin-stat {
+  display: block;
+  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.08) 100%);
+  color: white;
+  padding: 22px 18px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* admin stat label small */
+#adminDashboard .admin-stat .label {
+  font-size: 0.95rem;
+  opacity: 0.95;
+  color: rgba(255,255,255,0.95);
+  margin-bottom: 6px;
+}
+
+/* admin stat value large */
+#adminDashboard .admin-stat .value {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  margin-top: 6px;
+}
+
+/* allow different variants (success/warning/danger) for admin stats */
+#adminDashboard .admin-stat.success {
+  background: linear-gradient(135deg, var(--success) 0%, rgba(0,0,0,0.06) 100%);
+  color: white;
+}
+#adminDashboard .admin-stat.warning {
+  background: linear-gradient(135deg, var(--warning) 0%, rgba(0,0,0,0.06) 100%);
+  color: white;
+}
+#adminDashboard .admin-stat.danger {
+  background: linear-gradient(135deg, var(--danger) 0%, rgba(0,0,0,0.06) 100%);
+  color: white;
+}
+
+/* If JS renders .stat-card inside admin, make them full-width and neutral background */
+#adminDashboard .stat-card {
+  display: block;
+  width: 100%;
+  min-height: auto;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  margin-bottom: 12px;
+}
+
+/* Restore top stripe for admin stat-card if desired */
+#adminDashboard .stat-card::before {
+  display: block;
+  height: 6px;
+  width: 100%;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  margin: -14px -18px 10px -18px;
+  background: linear-gradient(90deg, var(--current-role-color), rgba(0,0,0,0.04));
+}
+
+/* keep admin role-badge colored */
+#adminDashboard .role-badge {
+  background: var(--current-role-color);
+  color: white;
+}
+
+/* Keep admin tables readable */
+#adminDashboard .card table {
+  margin-top: 12px;
+}
+
+/* Small screens: adjust admin stat size */
+@media (max-width: 560px) {
+  #adminDashboard .admin-stat .value {
+    font-size: 1.8rem;
+  }
+  #adminDashboard .admin-stat {
+    padding: 16px 12px;
+  }
+}
+
+/* End of CSS */
