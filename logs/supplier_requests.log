@@ -505,3 +505,71 @@
 [2025-12-12 10:23:51] GET request from staff1
 [2025-12-12 10:23:51] User authenticated - ID: 2, Role: staff
 [2025-12-12 10:23:51] GET action: list
+[2025-12-12 11:14:50] GET request from staff1
+[2025-12-12 11:14:50] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:14:50] GET action: list
+[2025-12-12 11:14:55] GET request from staff1
+[2025-12-12 11:14:55] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:14:55] GET action: list
+[2025-12-12 11:15:07] GET request from staff1
+[2025-12-12 11:15:07] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:15:07] GET action: my_requests
+[2025-12-12 11:15:07] Found 3 requests for user 2
+[2025-12-12 11:15:08] GET request from staff1
+[2025-12-12 11:15:08] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:15:08] GET action: list
+[2025-12-12 11:15:09] GET request from staff1
+[2025-12-12 11:15:09] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:15:09] GET action: list
+[2025-12-12 11:16:38] GET request from staff1
+[2025-12-12 11:16:38] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:16:38] GET action: list
+[2025-12-12 11:16:43] GET request from staff1
+[2025-12-12 11:16:43] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:16:43] GET action: list
+[2025-12-12 11:16:54] GET request from staff1
+[2025-12-12 11:16:54] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:16:54] GET action: my_requests
+[2025-12-12 11:16:54] Found 3 requests for user 2
+[2025-12-12 11:17:22] GET request from staff1
+[2025-12-12 11:17:22] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:17:22] GET action: my_requests
+[2025-12-12 11:17:22] Found 3 requests for user 2
+[2025-12-12 11:17:25] GET request from staff1
+[2025-12-12 11:17:25] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:17:25] GET action: my_requests
+[2025-12-12 11:17:25] Found 3 requests for user 2
+[2025-12-12 11:18:18] GET request from staff1
+[2025-12-12 11:18:18] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:18:18] GET action: list
+[2025-12-12 11:19:10] GET request from staff1
+[2025-12-12 11:19:10] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:19:10] GET action: list
+[2025-12-12 11:19:11] GET request from staff1
+[2025-12-12 11:19:11] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:19:11] GET action: my_requests
+[2025-12-12 11:19:11] Found 3 requests for user 2
+[2025-12-12 11:19:21] POST request from staff1
+[2025-12-12 11:19:21] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:19:21] POST: Starting creation process
+[2025-12-12 11:19:21] POST: Raw input = {"name":"pt jaya abadi","contact_person":"","phone":"","address":""}
+[2025-12-12 11:19:21] POST: Decoded data = {"name":"pt jaya abadi","contact_person":"","phone":"","address":""}
+[2025-12-12 11:19:21] POST: Name='pt jaya abadi', Contact=''
+[2025-12-12 11:19:21] POST: Duplicate check count = 0
+[2025-12-12 11:19:21] POST: is_active=0, user_id=2
+[2025-12-12 11:19:21] POST SUCCESS: New supplier ID = 10
+[2025-12-12 11:19:21] POST: Verified insertion = {"id":10,"name":"pt jaya abadi","contact_person":"","phone":"","address":"","is_active":0,"created_at":"2025-12-12 18:19:21","created_by_user_id":2}
+[2025-12-12 11:19:24] GET request from staff1
+[2025-12-12 11:19:24] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:19:24] GET action: my_requests
+[2025-12-12 11:19:24] Found 4 requests for user 2
+[2025-12-12 11:19:26] GET request from staff1
+[2025-12-12 11:19:26] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:19:26] GET action: my_requests
+[2025-12-12 11:19:26] Found 4 requests for user 2
+[2025-12-12 11:20:14] GET request from staff1
+[2025-12-12 11:20:14] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:20:14] GET action: list
+[2025-12-12 11:20:33] GET request from staff1
+[2025-12-12 11:20:33] User authenticated - ID: 2, Role: staff
+[2025-12-12 11:20:33] GET action: list

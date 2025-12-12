@@ -6,31 +6,32 @@
    CSS VARIABLES - Role Colors
    ======================================== */
 :root {
-  /* Role Colors */
-  --role-admin: #D96236;     /* Burnt Orange */
-  --role-owner: #1F456F;     /* Deep Indigo */
-  --role-supervisor: #447C4F; /* Cypress Green */
-  --role-staff: #7D447D;     /* Deep Plum */
-  
+  /* Role Colors (soft warm palette) */
+  --role-admin: #E07A5F;      /* Clay Red */
+  --role-owner: #D9A441;      /* Golden Amber */
+  --role-supervisor: #6CA78C; /* Sage Green */
+  --role-staff: #5E81AC;      /* Dusty Blue */
+
   /* Base Colors */
-  --bg-main: #F8F8F8;        /* Bone White */
-  --bg-card: #FFFFFF;        /* Pure White */
-  --text-main: #3C4048;      /* Deep Slate */
-  --text-muted: #9FA6B2;     /* Light Slate */
-  
+  --bg-main: #F6F1EB;         /* Warm Linen */
+  --bg-card: #FFFFFF;         /* Clean White */
+  --text-main: #2F343F;       /* Charcoal */
+  --text-muted: #7B818A;      /* Soft Slate */
+
   /* Status Colors */
-  --success: #16A34A;        /* Forest Green */
-  --danger: #DC2626;         /* Chili Red */
-  --warning: #F59E0B;        /* Amber */
-  
+  --success: #3B9E6B;         /* Fresh Green */
+  --danger: #D05F5F;          /* Muted Coral */
+  --warning: #E2AD4C;         /* Honey Gold */
+
   /* Sidebar */
   --sidebar-width: 260px;
-  --sidebar-bg: #1A202C;     /* Dark Gray */
-  --sidebar-text: #E2E8F0;
-  --sidebar-hover: rgba(255,255,255,0.1);
-  
+  --sidebar-bg: #2E3442;      /* Warm Charcoal */
+  --sidebar-text: #EAEFF7;
+  --sidebar-hover: rgba(234,239,247,0.12);
+
   /* Dynamic Role Color (will be set by JS) */
-  --current-role-color: #D96236; /* Default: Admin */
+  --current-role-color: var(--role-admin);
+  --current-role-rgb: 224, 122, 95;
 }
 
 /* ========================================
@@ -38,22 +39,22 @@
    ======================================== */
 .card.login-admin {
   border: 2px solid var(--role-admin);
-  box-shadow: 0 0 15px rgba(217, 98, 54, 0.4);
+  box-shadow: 0 0 15px rgba(224, 122, 95, 0.38);
 }
 
 .card.login-owner {
   border: 2px solid var(--role-owner);
-  box-shadow: 0 0 15px rgba(31, 69, 111, 0.4);
+  box-shadow: 0 0 15px rgba(217, 164, 65, 0.32);
 }
 
 .card.login-supervisor {
   border: 2px solid var(--role-supervisor);
-  box-shadow: 0 0 15px rgba(68, 124, 79, 0.4);
+  box-shadow: 0 0 15px rgba(108, 167, 140, 0.32);
 }
 
 .card.login-staff {
   border: 2px solid var(--role-staff);
-  box-shadow: 0 0 15px rgba(125, 68, 125, 0.4);
+  box-shadow: 0 0 15px rgba(94, 129, 172, 0.32);
 }
 
 
@@ -102,8 +103,8 @@ body {
 /* Sidebar Header */
 .sidebar-header {
   padding: 24px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.3) 100%);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.18) 100%);
 }
 
 .sidebar-header h1 {
@@ -124,8 +125,8 @@ body {
 /* User Info */
 .sidebar-user {
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.06);
 }
 
 .user-info {
@@ -209,7 +210,7 @@ body {
 }
 
 .nav-item.active {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.14);
   border-left-color: var(--current-role-color);
   color: white;
   font-weight: 600;
@@ -242,9 +243,9 @@ body {
 }
 
 .btn-logout:hover {
-  background: #B91C1C;
+  background: #b34f4f;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(220,38,38,0.3);
+  box-shadow: 0 4px 8px rgba(208,95,95,0.32);
 }
 
 /* ========================================
@@ -261,7 +262,7 @@ body {
 /* Top Header (Breadcrumb/Page Title) */
 .content-header {
   background: var(--bg-card);
-  border-bottom: 1px solid #E2E8F0;
+  border-bottom: 1px solid #E3E7ED;
   padding: 20px 32px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
@@ -296,7 +297,7 @@ body {
   padding: 24px;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  border: 1px solid #E2E8F0;
+  border: 1px solid #E3E7ED;
   margin-bottom: 24px;
   transition: all 0.2s ease;
 }
@@ -349,7 +350,7 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--current-role-color);
-  box-shadow: 0 0 0 3px rgba(var(--current-role-color), 0.1);
+  box-shadow: 0 0 0 3px rgba(var(--current-role-rgb), 0.18);
 }
 
 textarea {
@@ -450,28 +451,28 @@ textarea {
 }
 
 .badge-success {
-  background: #DCFCE7;
-  color: #166534;
+  background: #E6F4EC;
+  color: #2F7A57;
 }
 
 .badge-danger {
-  background: #FEE2E2;
-  color: #991B1B;
+  background: #F8E2E0;
+  color: #B94F4F;
 }
 
 .badge-warning {
-  background: #FEF3C7;
-  color: #92400E;
+  background: #F6E9CC;
+  color: #94641C;
 }
 
 .badge-in {
-  background: #DBEAFE;
-  color: #1E40AF;
+  background: #E3EDFB;
+  color: #466693;
 }
 
 .badge-out {
-  background: #FCE7F3;
-  color: #9F1239;
+  background: #F7E5ED;
+  color: #B85B74;
 }
 
 /* Role Badge */
@@ -490,7 +491,7 @@ textarea {
    STAT BOXES (original)
    ======================================== */
 .stat-box {
-  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.2) 100%);
+  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.14) 100%);
   padding: 20px;
   border-radius: 10px;
   color: white;
@@ -501,19 +502,19 @@ textarea {
 
 .stat-box:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.18);
 }
 
 .stat-box.success {
-  background: linear-gradient(135deg, var(--success) 0%, #15803D 100%);
+  background: linear-gradient(135deg, var(--success) 0%, #2F8B5E 100%);
 }
 
 .stat-box.danger {
-  background: linear-gradient(135deg, var(--danger) 0%, #B91C1C 100%);
+  background: linear-gradient(135deg, var(--danger) 0%, #b34f4f 100%);
 }
 
 .stat-box.warning {
-  background: linear-gradient(135deg, var(--warning) 0%, #D97706 100%);
+  background: linear-gradient(135deg, var(--warning) 0%, #c58c36 100%);
 }
 
 .stat-label {
@@ -635,7 +636,7 @@ hr {
   :root {
     --sidebar-width: 220px;
   }
-  
+
   .content-body {
     padding: 24px;
   }
@@ -645,27 +646,27 @@ hr {
   .sidebar {
     transform: translateX(-100%);
   }
-  
+
   .sidebar.mobile-open {
     transform: translateX(0);
   }
-  
+
   .main-content {
     margin-left: 0;
   }
-  
+
   .content-header {
     padding: 16px 20px;
   }
-  
+
   .content-body {
     padding: 20px;
   }
-  
+
   .stat-box {
     padding: 16px;
   }
-  
+
   .stat-value {
     font-size: 1.8rem;
   }
@@ -697,7 +698,7 @@ hr {
   .btn-logout {
     display: none !important;
   }
-  
+
   .main-content {
     margin-left: 0;
   }

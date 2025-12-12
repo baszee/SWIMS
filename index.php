@@ -39,7 +39,7 @@ session_start();
       <!-- Logout Button -->
       <div class="sidebar-footer">
         <button class="btn-logout" onclick="logout()">
-          <span style="font-size:1.2rem;">🚪</span> Logout
+          <span style="font-size:1.2rem;"></span> Logout
         </button>
       </div>
     </aside>

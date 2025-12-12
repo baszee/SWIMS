@@ -8,16 +8,30 @@
     // Do not redeclare ROLE_COLORS if it exists. Provide fallback only.
     if (!global.ROLE_COLORS) {
         global.ROLE_COLORS = {
-            admin: '#D96236',
-            owner: '#1F456F',
-            supervisor: '#447C4F',
-            staff: '#7D447D'
+            admin: '#E07A5F',
+            owner: '#D9A441',
+            supervisor: '#6CA78C',
+            staff: '#5E81AC'
         };
     }
 
     // Helpers
+    function hexToRgb(hex) {
+        const normalized = (hex || '').replace('#','');
+        if (normalized.length !== 6) return null;
+        const bigint = parseInt(normalized, 16);
+        const r = (bigint >> 16) & 255;
+        const g = (bigint >> 8) & 255;
+        const b = bigint & 255;
+        return `${r}, ${g}, ${b}`;
+    }
     function getRoleColor(role) {
         return (global.ROLE_COLORS && global.ROLE_COLORS[role]) ? global.ROLE_COLORS[role] : global.ROLE_COLORS.admin;
+    }
+    function setRoleCssVars(color) {
+        const rgb = hexToRgb(color);
+        try { document.documentElement.style.setProperty('--current-role-color', color); } catch (e) {}
+        if (rgb) { try { document.documentElement.style.setProperty('--current-role-rgb', rgb); } catch (e) {} }
     }
     function getRoleCssVar(role) { return `var(--role-${role})`; }
     function $id(id) { return document.getElementById(id) || null; }
@@ -73,11 +87,11 @@
                         <div class="stat-label">Total Jenis Barang (Approved)</div>
                         <div class="stat-value">${Number(stats.total_items || 0).toLocaleString()}</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #c58c36 100%);">
                         <div class="stat-label">Pending Masuk</div>
                         <div class="stat-value">${Number(stats.pending_in || 0)}</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #c58c36 100%);">
                         <div class="stat-label">Pending Keluar</div>
                         <div class="stat-value">${Number(stats.pending_out || 0)}</div>
                     </div>
@@ -127,11 +141,11 @@
                         <div class="stat-value">${totalPending}</div>
                         <p class="small" style="margin-top:8px;">${pendingIn} Masuk + ${pendingOut} Keluar</p>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #c58c36 100%);">
                         <div class="stat-label">Barang Masuk Pending</div>
                         <div class="stat-value">${pendingIn}</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #c58c36 100%);">
                         <div class="stat-label">Barang Keluar Pending</div>
                         <div class="stat-value">${pendingOut}</div>
                     </div>
@@ -143,7 +157,7 @@
             `;
         } catch (error) {
             console.error('Supervisor stats error:', error);
-            statsDiv.innerHTML = `<div class="card" style="background:#fee2e2;"><h4 style="color:#991b1b;">Error Memuat Statistik</h4><p style="color:#991b1b;">${error.message}</p></div>`;
+            statsDiv.innerHTML = `<div class="card" style="background:#F8E2E0;"><h4 style="color:#B94F4F;">Error Memuat Statistik</h4><p style="color:#B94F4F;">${error.message}</p></div>`;
         }
     }
     async function loadRecentTransactions() {
@@ -196,33 +210,33 @@
             const data = await safeFetchJson('api/report.php?action=summary');
             if (!data.success || !data.data) { statsDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Gagal memuat data: ${data.message || 'Unknown'}</p></div>`; return; }
             const stats = data.data; const roleColor = getRoleColor(user.role || 'owner');
-            try { document.documentElement.style.setProperty('--current-role-color', roleColor); } catch (e) {}
+            setRoleCssVars(roleColor);
             statsDiv.innerHTML = `
                 <div class="stat-grid">
                     <div class="stat-box" style="background:linear-gradient(135deg, ${roleColor} 0%, rgba(0,0,0,0.18) 100%);">
                         <div class="stat-label">Total Jenis Barang</div>
                         <div class="stat-value">${Number(stats.total_items || 0).toLocaleString()}</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--success) 0%, #059669 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--success) 0%, #2F8B5E 100%);">
                         <div class="stat-label">Total Stok Semua Item</div>
                         <div class="stat-value">${Number(stats.total_stock || 0).toLocaleString()} Pcs</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #d97706 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--warning) 0%, #c58c36 100%);">
                         <div class="stat-label">Pending Transaksi</div>
                         <div class="stat-value">${Number((stats.transactions && stats.transactions.pending) || 0)}</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--success) 0%, #059669 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--success) 0%, #2F8B5E 100%);">
                         <div class="stat-label">Approved Transaksi</div>
                         <div class="stat-value">${Number((stats.transactions && stats.transactions.approved) || 0)}</div>
                     </div>
-                    <div class="stat-box" style="background:linear-gradient(135deg, var(--danger) 0%, #B91C1C 100%);">
+                    <div class="stat-box" style="background:linear-gradient(135deg, var(--danger) 0%, #b34f4f 100%);">
                         <div class="stat-label">Item Baru PENDING Approval</div>
                         <div class="stat-value">${Number(stats.pending_items || 0)}</div>
                     </div>
                 </div>
             `;
             if (Number(stats.low_stock || 0) > 0) {
-                warningDiv.innerHTML = `<div class="card" style="margin-top:16px; background:#fef3c7; border-color:#f59e0b;"><h4 style="margin-top:0; color:var(--warning);">PERINGATAN STOK RENDAH</h4><p style="color:#92400e; margin:0;">Terdapat <strong>${Number(stats.low_stock)}</strong> jenis item yang sudah mencapai atau di bawah Stok Minimum. Mohon periksa Laporan Inventaris.</p></div>`;
+                warningDiv.innerHTML = `<div class="card" style="margin-top:16px; background:#F6E9CC; border-color:#E2AD4C;"><h4 style="margin-top:0; color:var(--warning);">PERINGATAN STOK RENDAH</h4><p style="color:#94641C; margin:0;">Terdapat <strong>${Number(stats.low_stock)}</strong> jenis item yang sudah mencapai atau di bawah Stok Minimum. Mohon periksa Laporan Inventaris.</p></div>`;
             }
         } catch (error) { statsDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error Jaringan: Gagal mengambil data dashboard Owner.</p></div>`; console.error('Owner Dashboard load error:', error); }
         finally { try { hideLoadingModal && hideLoadingModal(); } catch (e) {} }
@@ -244,12 +258,12 @@
             const recentUsers = users.slice(0,5);
             const currUser = (typeof currentUser === 'function') ? currentUser() : null;
             const adminColor = getRoleColor((currUser && currUser.role) ? currUser.role : 'admin');
-            try { document.documentElement.style.setProperty('--current-role-color', adminColor); } catch (e) {}
+            setRoleCssVars(adminColor);
             let html = `<div class="card"><h2>Admin Dashboard</h2><p class="small">Selamat datang, <b>${(currUser && currUser.username) || 'Admin'}</b>! Berikut adalah ringkasan pengguna sistem SWIMS.</p></div>`;
             html += `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">`;
             html += `<div class="stat-box" style="background:linear-gradient(135deg, ${adminColor} 0%, rgba(0,0,0,0.18) 100%);"><div class="stat-label">Total User</div><div class="stat-value">${totalUsers}</div><p class="small" style="margin-top:8px;">Terdaftar di sistem</p></div>`;
-            html += `<div class="stat-box" style="background:linear-gradient(135deg, var(--success) 0%, #059669 100%);"><div class="stat-label">User Aktif</div><div class="stat-value">${activeUsers}</div></div>`;
-            html += `<div class="stat-box" style="background:linear-gradient(135deg, var(--danger) 0%, #B91C1C 100%);"><div class="stat-label">User Non-aktif</div><div class="stat-value">${inactiveUsers}</div></div>`;
+            html += `<div class="stat-box" style="background:linear-gradient(135deg, var(--success) 0%, #2F8B5E 100%);"><div class="stat-label">User Aktif</div><div class="stat-value">${activeUsers}</div></div>`;
+            html += `<div class="stat-box" style="background:linear-gradient(135deg, var(--danger) 0%, #b34f4f 100%);"><div class="stat-label">User Non-aktif</div><div class="stat-value">${inactiveUsers}</div></div>`;
             html += `</div><div class="card"><h3>Statistik Berdasarkan Role</h3><div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-top:16px;">`;
             html += `<div class="stat-box" style="background: linear-gradient(135deg, ${getRoleCssVar('admin')} 0%, rgba(0,0,0,0.05) 100%);"><div class="stat-label">Admin</div><div class="stat-value">${roleCount.admin}</div></div>`;
             html += `<div class="stat-box" style="background: linear-gradient(135deg, ${getRoleCssVar('staff')} 0%, rgba(0,0,0,0.05) 100%);"><div class="stat-label">Staff</div><div class="stat-value">${roleCount.staff}</div></div>`;
@@ -260,7 +274,7 @@
                 const statusBadge = Number(u.is_active) === 1 ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-danger">Non-aktif</span>';
                 html += `<tr><td>${u.id || '-'}</td><td><b>${u.username || '-'}</b></td><td><span class="role-badge">${u.role || '-'}</span></td><td>${statusBadge}</td><td>${fmtDateShort(u.created_at)}</td></tr>`;
             });
-            html += `</tbody></table></div><div class="card" style="background:#f0f9ff; border-left:4px solid var(--current-role-color);"><h3 style="margin-top:0; color:var(--text-main);">Tips Administrator</h3><ul style="margin:0; padding-left:20px; color:var(--text-main);"><li>User Management: Kelola akun pengguna sistem SWIMS</li><li>View Stock: Monitor stok gudang (read-only)</li><li>Security: Admin tidak dapat mengubah stok secara langsung</li><li>Best Practice: Gunakan password yang kuat dan ganti secara berkala</li></ul></div>`;
+            html += `</tbody></table></div><div class="card" style="background:#F4F7FB; border-left:4px solid var(--current-role-color);"><h3 style="margin-top:0; color:var(--text-main);">Tips Administrator</h3><ul style="margin:0; padding-left:20px; color:var(--text-main);"><li>User Management: Kelola akun pengguna sistem SWIMS</li><li>View Stock: Monitor stok gudang (read-only)</li><li>Security: Admin tidak dapat mengubah stok secara langsung</li><li>Best Practice: Gunakan password yang kuat dan ganti secara berkala</li></ul></div>`;
             dashboardDiv.innerHTML = html;
         } catch (error) {
             dashboardDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error saat memuat data: ${error.message}</p><button class="btn primary" onclick="loadAdminDashboardSimple()">Coba Lagi</button></div>`;

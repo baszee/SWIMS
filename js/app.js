@@ -9,10 +9,10 @@
 // ROLE COLOR MAPPING
 // ========================================
 const ROLE_COLORS = {
-    'admin': '#D96236',      // Burnt Orange
-    'owner': '#1F456F',      // Deep Indigo
-    'supervisor': '#447C4F', // Cypress Green
-    'staff': '#7D447D'       // Deep Plum
+    'admin': '#E07A5F',      // Clay Red
+    'owner': '#D9A441',      // Golden Amber
+    'supervisor': '#6CA78C', // Sage Green
+    'staff': '#5E81AC'       // Dusty Blue
 };
 
 // ========================================
@@ -177,9 +177,21 @@ function currentUser(){
 // ========================================
 // SET ROLE COLOR (Dynamic CSS Variable)
 // ========================================
+function hexToRgb(hex) {
+    const normalized = hex.replace('#','');
+    if (normalized.length !== 6) return null;
+    const bigint = parseInt(normalized, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `${r}, ${g}, ${b}`;
+}
+
 function setRoleColor(role) {
     const color = ROLE_COLORS[role] || ROLE_COLORS['admin'];
+    const rgb = hexToRgb(color);
     document.documentElement.style.setProperty('--current-role-color', color);
+    if (rgb) document.documentElement.style.setProperty('--current-role-rgb', rgb);
     console.log(`✅ Role color set to: ${color} (${role})`);
 }
 
