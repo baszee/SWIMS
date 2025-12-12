@@ -1,9 +1,85 @@
 /**
  * =========================================================
- * APP.JS - CORE MODULE v2.1 - FIXED INLINE SCRIPT EXECUTION
- * Fix: Increased delay for inline scripts to execute
+ * APP.JS - CORE MODULE v3.0 - SIDEBAR LAYOUT
+ * Sidebar Navigation with Dynamic Role Colors
  * =========================================================
  */
+
+// ========================================
+// ROLE COLOR MAPPING
+// ========================================
+const ROLE_COLORS = {
+    'admin': '#D96236',      // Burnt Orange
+    'owner': '#1F456F',      // Deep Indigo
+    'supervisor': '#447C4F', // Cypress Green
+    'staff': '#7D447D'       // Deep Plum
+};
+
+// ========================================
+// ROLE ICON MAPPING
+// ========================================
+const ROLE_ICONS = {
+    'admin': '👨‍💼',
+    'owner': '👑',
+    'supervisor': '👨‍✈️',
+    'staff': '👨‍🔧'
+};
+
+// ========================================
+// MENU STRUCTURE PER ROLE
+// ========================================
+const ROLE_MENUS = {
+    'staff': [
+        { section: 'Main', items: [
+            { icon: '', label: 'Dashboard', page: 'staff' },
+            { icon: '', label: 'Inventaris Stok', page: 'inventory' }
+        ]},
+        { section: 'Transaksi', items: [
+            { icon: '', label: 'Barang Masuk', page: 'barang_masuk' },
+            { icon: '', label: 'Barang Keluar', page: 'barang_keluar' }
+        ]},
+        { section: 'Request', items: [
+            { icon: '', label: 'Request Klien/Supplier', page: 'request_item' }
+        ]}
+    ],
+    'supervisor': [
+        { section: 'Main', items: [
+            { icon: '', label: 'Dashboard', page: 'supervisor' },
+            { icon: '', label: 'Inventaris Stok', page: 'inventory' }
+        ]},
+        { section: 'Approval', items: [
+            { icon: '', label: 'Approval Transaksi', page: 'approval' },
+            { icon: '', label: 'Approval Supplier/Klien', page: 'approval_items' }
+        ]},
+        { section: 'Monitoring', items: [
+            { icon: '', label: 'History Transaksi', page: 'history_transaksi' },
+            { icon: '', label: 'Notes Internal', page: 'notes' }
+        ]}
+    ],
+    'admin': [
+        { section: 'Main', items: [
+            { icon: '', label: 'Dashboard', page: 'admin' },
+            { icon: '', label: 'Inventaris Stok', page: 'inventory' }
+        ]},
+        { section: 'Management', items: [
+            { icon: '', label: 'User Management', page: 'admin_users' },
+            { icon: '', label: 'Activity Logs', page: 'admin_activity_logs' }
+        ]}
+    ],
+    'owner': [
+        { section: 'Main', items: [
+            { icon: '', label: 'Dashboard', page: 'owner' },
+            { icon: '', label: 'Inventaris Stok', page: 'inventory' }
+        ]},
+        { section: 'Reports', items: [
+            { icon: '', label: 'Monitoring & Laporan', page: 'owner_report' },
+            { icon: '', label: 'History Transaksi', page: 'history_transaksi' }
+        ]},
+        { section: 'Communication', items: [
+            { icon: '', label: 'Notes Internal', page: 'notes' }
+        ]}
+    ]
+};
 
 // ---------- Modal Helpers ----------
 function showMessageModal(title, message, is_confirm = false, on_confirm = null) {
@@ -23,71 +99,6 @@ function showMessageModal(title, message, is_confirm = false, on_confirm = null)
             </div>
         `;
         document.body.appendChild(modal);
-
-        const modalStyle = `
-        .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .modal-content {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            max-width: 400px;
-            width: 90%;
-        }
-        .modal-actions {
-            margin-top: 20px;
-            text-align: right;
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
-        }
-        .autocomplete-dropdown {
-            position: absolute;
-            z-index: 100;
-            max-height: 200px;
-            overflow-y: auto;
-            border: 1px solid var(--input-border);
-            background: var(--card);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-            width: 100%;
-            margin-top: 2px;
-            border-radius: 6px;
-        }
-        .autocomplete-item {
-            padding: 10px 12px;
-            cursor: pointer;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.9rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .autocomplete-item:hover {
-            background: #f1f5f9;
-        }
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-        .autocomplete-item.disabled {
-            cursor: default;
-            color: var(--muted);
-            font-style: italic;
-        }
-        `;
-        const styleEl = document.createElement('style');
-        styleEl.textContent = modalStyle;
-        document.head.appendChild(styleEl);
         modal.style.display = 'none'; 
     }
     
@@ -122,8 +133,9 @@ function showLoadingModal(message = "Memuat data...") {
         loading.id = 'loadingModal';
         loading.className = 'modal-backdrop';
         loading.innerHTML = `
-            <div class="card" style="padding:15px; text-align:center;">
-                <p style="margin:0;"><span id="loadingMessage">${message}</span></p>
+            <div class="card" style="padding:20px; text-align:center;">
+                <div class="loading-spinner"></div>
+                <p style="margin:10px 0 0 0;"><span id="loadingMessage">${message}</span></p>
             </div>
         `;
         document.body.appendChild(loading);
@@ -150,7 +162,7 @@ function storageSet(key, val){
     localStorage.setItem(key, JSON.stringify(val)); 
 }
 
-// Global cache untuk data master
+// Global cache
 let masterDataCache = {
     suppliers: [],
     recipients: [], 
@@ -158,72 +170,135 @@ let masterDataCache = {
 };
 
 // ---------- Auth helpers ----------
-
 function currentUser(){ 
     return storageGet('swims_current_user'); 
 }
 
-function renderUserBar(){
-    const ub = document.getElementById('userBar');
-    const user = currentUser();
-    ub.innerHTML = '';
-    
-    if (!user){
-        ub.innerHTML = `<span class="small">Belum login</span>`;
-    } else {
-        ub.innerHTML = `<span class="small">User: <b>${user.username}</b> &middot; <span class="role-badge">${user.role}</span></span>`;
-    }
+// ========================================
+// SET ROLE COLOR (Dynamic CSS Variable)
+// ========================================
+function setRoleColor(role) {
+    const color = ROLE_COLORS[role] || ROLE_COLORS['admin'];
+    document.documentElement.style.setProperty('--current-role-color', color);
+    console.log(`✅ Role color set to: ${color} (${role})`);
 }
 
-function renderMenu(){
-    const menu = document.getElementById('menuBar');
+// ========================================
+// RENDER SIDEBAR USER INFO
+// ========================================
+function renderSidebarUser() {
+    const container = document.getElementById('sidebarUser');
     const user = currentUser();
-    menu.innerHTML = '';
     
-    if (!user){
-        menu.innerHTML = `<button onclick="loadPage('login')">Login</button>`;
+    if (!user) {
+        container.innerHTML = '<p class="small" style="text-align:center; color:var(--text-muted);">Not logged in</p>';
         return;
     }
     
-    const role = user.role;
-    let buttons = '';
+    const icon = ROLE_ICONS[user.role] || '👤';
+    const initials = user.username.substring(0, 2).toUpperCase();
     
-    if (role === 'staff'){
-        buttons += `<button onclick="loadPage('staff')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('barang_masuk')">Barang Masuk</button>`;
-        buttons += `<button onclick="loadPage('barang_keluar')">Barang Keluar</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
-        buttons += `<button onclick="loadPage('request_item')">Request Klien/Supplier</button>`;
-    }
-    
-    if (role === 'supervisor'){
-        buttons += `<button onclick="loadPage('supervisor')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('approval')">Approval Transaksi</button>`;
-        buttons += `<button onclick="loadPage('approval_items')">Approval Supplier/Klien</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
-        buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`;
-        buttons += `<button onclick="loadPage('notes')">Notes</button>`;
-    }
-    
-    if (role === 'admin'){
-        buttons += `<button onclick="loadPage('admin')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('admin_users')">User Management</button>`;
-        buttons += `<button onclick="loadPage('admin_activity_logs')">📋 Activity Logs</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
-    }
-    
-    if (role === 'owner'){
-        buttons += `<button onclick="loadPage('owner')">Dashboard</button>`;
-        buttons += `<button onclick="loadPage('inventory')">📦 Inventaris Stok</button>`;
-        buttons += `<button onclick="loadPage('history_transaksi')">History Transaksi</button>`;
-        buttons += `<button onclick="loadPage('notes')">Notes</button>`;
-        buttons += `<button onclick="loadPage('owner_report')">Monitoring & Laporan</button>`;
-    }
-    
-    buttons += `<button style="margin-left:auto" onclick="logout()">Logout</button>`;
-    menu.innerHTML = buttons;
+    container.innerHTML = `
+        <div class="user-info">
+            <div class="user-avatar" title="${user.username}">
+                ${icon}
+            </div>
+            <div class="user-details">
+                <div class="user-name">${user.username}</div>
+                <span class="user-role">${user.role}</span>
+            </div>
+        </div>
+    `;
 }
 
+// ========================================
+// RENDER SIDEBAR NAVIGATION
+// ========================================
+function renderSidebarNav() {
+    const container = document.getElementById('sidebarNav');
+    const user = currentUser();
+    
+    if (!user) {
+        container.innerHTML = '<p class="small" style="padding:20px; text-align:center;">Please login</p>';
+        return;
+    }
+    
+    const menuStructure = ROLE_MENUS[user.role] || [];
+    
+    let html = '';
+    
+    menuStructure.forEach(section => {
+        if (section.section) {
+            html += `<div class="nav-section-title">${section.section}</div>`;
+        }
+        
+        section.items.forEach(item => {
+            html += `
+                <a class="nav-item" onclick="loadPage('${item.page}')" data-page="${item.page}">
+                    <span class="nav-item-icon">${item.icon}</span>
+                    <span>${item.label}</span>
+                </a>
+            `;
+        });
+    });
+    
+    container.innerHTML = html;
+    
+    // Set active state
+    updateActiveNavItem();
+}
+
+// ========================================
+// UPDATE ACTIVE NAV ITEM
+// ========================================
+function updateActiveNavItem() {
+    const currentHash = window.location.hash.replace('#', '');
+    const navItems = document.querySelectorAll('.nav-item');
+    
+    navItems.forEach(item => {
+        const itemPage = item.getAttribute('data-page');
+        if (itemPage === currentHash) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
+// ========================================
+// UPDATE PAGE TITLE & BREADCRUMB
+// ========================================
+function updatePageHeader(page) {
+    const pageTitles = {
+        'staff': 'Staff Dashboard',
+        'barang_masuk': 'Barang Masuk',
+        'barang_keluar': 'Barang Keluar',
+        'request_item': 'Request Klien/Supplier',
+        'inventory': 'Inventaris Stok Gudang',
+        'supervisor': 'Supervisor Dashboard',
+        'approval': 'Approval Transaksi',
+        'approval_items': 'Approval Supplier/Klien',
+        'history_transaksi': 'History Transaksi',
+        'notes': 'Notes Internal',
+        'admin': 'Admin Dashboard',
+        'admin_users': 'User Management',
+        'admin_activity_logs': 'Activity Logs',
+        'owner': 'Owner Dashboard',
+        'owner_report': 'Monitoring & Laporan',
+        'login': 'Login'
+    };
+    
+    const title = pageTitles[page] || 'SWIMS';
+    document.getElementById('pageTitle').textContent = title;
+    
+    const user = currentUser();
+    const breadcrumb = user ? `${user.role.toUpperCase()} > ${title}` : title;
+    document.getElementById('breadcrumb').textContent = breadcrumb;
+}
+
+// ========================================
+// CHECK SESSION AND RENDER
+// ========================================
 async function checkSessionAndRender(){
     try {
         const response = await fetch('api/auth.php?action=check_session');
@@ -232,9 +307,14 @@ async function checkSessionAndRender(){
         if (data.logged_in) {
             storageSet('swims_current_user', data.user); 
             
-            renderUserBar();
-            renderMenu();
+            // Set role color
+            setRoleColor(data.user.role);
             
+            // Render sidebar
+            renderSidebarUser();
+            renderSidebarNav();
+            
+            // Load page
             const currentHash = window.location.hash.replace('#', '');
             if (!currentHash || currentHash === 'login') {
                 loadPage(roleLanding(data.user.role));
@@ -243,17 +323,39 @@ async function checkSessionAndRender(){
             }
         } else {
             storageSet('swims_current_user', null);
-            renderUserBar();
-            renderMenu();
+            hideSidebar();
             loadPage('login');
         }
     } catch (error) {
         console.error('Error checking session:', error);
         storageSet('swims_current_user', null);
+        hideSidebar();
         loadPage('login');
     }
 }
 
+// ========================================
+// HIDE SIDEBAR (FOR LOGIN PAGE)
+// ========================================
+function hideSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (sidebar) sidebar.style.display = 'none';
+    if (mainContent) mainContent.style.marginLeft = '0';
+}
+
+function showSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (sidebar) sidebar.style.display = 'flex';
+    if (mainContent) mainContent.style.marginLeft = 'var(--sidebar-width)';
+}
+
+// ========================================
+// LOGOUT
+// ========================================
 function logout(){
     showMessageModal(
         'Konfirmasi Logout', 
@@ -278,41 +380,26 @@ function logout(){
     );
 }
 
-// ---------- Page Access Control & Loading ----------
-
-const ROLE_ALLOWED_PAGES = {
-    'login': ['guest','staff','supervisor','admin','owner'],
-    'staff': ['staff'],
-    'barang_masuk': ['staff'],
-    'barang_keluar': ['staff'],
-    'request_item': ['staff'],
-    'inventory': ['staff','supervisor','owner','admin'],
-    'supervisor': ['supervisor'],
-    'approval': ['supervisor'],
-    'approval_items': ['supervisor'],
-    'history_transaksi': ['supervisor','owner'],
-    'admin': ['admin'],
-    'admin_users': ['admin'],
-    'admin_activity_logs': ['admin'],
-    'manage_items': ['admin'], 
-    'owner': ['owner'],
-    'owner_report': ['owner'],
-    'notes': ['supervisor','owner']
-};
-
-function roleLanding(role){
-    if (role === 'staff') return 'staff';
-    if (role === 'supervisor') return 'supervisor';
-    if (role === 'admin') return 'admin';
-    if (role === 'owner') return 'owner';
-    return 'login';
-}
-
-// ---------- CRITICAL FIX: loadPage with LONGER delay for inline scripts ----------
+// ========================================
+// LOAD PAGE
+// ========================================
 function loadPage(page){
     window.location.hash = page;
     
     console.log(`📄 Loading page: ${page}`);
+    
+    // Update header
+    updatePageHeader(page);
+    
+    // Update active nav
+    updateActiveNavItem();
+    
+    // Show/hide sidebar based on page
+    if (page === 'login') {
+        hideSidebar();
+    } else {
+        showSidebar();
+    }
     
     fetch(`pages/${page}.php`) 
       .then(r => {
@@ -324,21 +411,17 @@ function loadPage(page){
         
         console.log(`✅ Page HTML loaded: ${page}`);
         
-        // CRITICAL FIX: Increased delay to 500ms for inline scripts to execute
         setTimeout(() => {
             const initFuncName = 'init_' + page;
             console.log(`🔍 Looking for ${initFuncName} function...`);
-            console.log(`   → Type: ${typeof window[initFuncName]}`);
-            console.log(`   → Function exists: ${window[initFuncName] ? 'YES' : 'NO'}`);
             
-            // Panggil fungsi init_ jika ada
             if (typeof window[initFuncName] === 'function') {
                 console.log(`✅ Calling ${initFuncName}...`);
                 window[initFuncName]();
             } else {
-                console.log(`ℹ️ No ${initFuncName} function (page may have inline script that auto-runs)`);
+                console.log(`ℹ️ No ${initFuncName} function`);
             }
-        }, 100); // INCREASED from 150ms to 500ms
+        }, 100);
       })
       .catch(err => {
         console.error('❌ Page load error:', err);
@@ -353,8 +436,9 @@ function loadPage(page){
       });
 }
 
-// ---------- API Master Data Loader ----------
-
+// ========================================
+// LOAD MASTER DATA
+// ========================================
 async function loadMasterData() {
     showLoadingModal('Mengambil data master (Supplier & Item)...');
     try {
@@ -386,11 +470,21 @@ async function loadMasterData() {
     }
 }
 
-// ---------- Expose to global scope ----------
+// ========================================
+// ROLE LANDING PAGE
+// ========================================
+function roleLanding(role){
+    if (role === 'staff') return 'staff';
+    if (role === 'supervisor') return 'supervisor';
+    if (role === 'admin') return 'admin';
+    if (role === 'owner') return 'owner';
+    return 'login';
+}
 
+// ========================================
+// EXPOSE TO GLOBAL
+// ========================================
 window.loadPage = loadPage;
-window.renderUserBar = renderUserBar;
-window.renderMenu = renderMenu;
 window.currentUser = currentUser;
 window.logout = logout;
 window.checkSessionAndRender = checkSessionAndRender;
@@ -401,5 +495,8 @@ window.showMessageModal = showMessageModal;
 window.showLoadingModal = showLoadingModal; 
 window.hideLoadingModal = hideLoadingModal; 
 window.loadMasterData = loadMasterData;
+window.setRoleColor = setRoleColor;
+window.renderSidebarUser = renderSidebarUser;
+window.renderSidebarNav = renderSidebarNav;
 
-console.log('SWIMS Core App JS v2.1 Loaded (FIXED INLINE SCRIPT DELAY) ✅');
+console.log('✅ SWIMS Core App JS v3.0 Loaded (SIDEBAR LAYOUT)');
