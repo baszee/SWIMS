@@ -14,17 +14,17 @@ let currentApprovedTransaction = null;
 // ========================================
 
 function init_approval() {
-    console.log('🚀 Init Approval Transaksi');
+    console.log(' Init Approval Transaksi');
     loadApprovalData('transactions');
 }
 
 function init_approval_items() {
-    console.log('🚀 Init Approval Suppliers Only');
+    console.log(' Init Approval Suppliers Only');
     const content = document.getElementById('content');
     
     content.innerHTML = `
         <div class="card">
-            <h2>✅ Approval Klien/Supplier Baru</h2>
+            <h2> Approval Klien/Supplier Baru</h2>
             <p class="small">Supervisor menyetujui data Klien atau Supplier baru yang diajukan oleh Staff.</p>
         </div>
         <div id="approvalItemsList"></div>
@@ -49,14 +49,14 @@ async function loadApprovalData(type) {
         const data = await response.json();
         
         if (!data.success) {
-            listDiv.innerHTML = `<div class="card"><p style="color:var(--danger);">❌ ${data.message}</p></div>`;
+            listDiv.innerHTML = `<div class="card"><p style="color:var(--danger);"> ${data.message}</p></div>`;
             return;
         }
         
         if (data.data.length === 0) {
             listDiv.innerHTML = `
                 <div class="card" style="text-align:center; padding:40px;">
-                    <p style="font-size:3rem; margin:0;">✅</p>
+                    <p style="font-size:3rem; margin:0;"></p>
                     <p style="color:var(--success); font-weight:600;">Semua sudah di-approve!</p>
                 </div>
             `;
@@ -71,7 +71,7 @@ async function loadApprovalData(type) {
         }
         
     } catch (error) {
-        listDiv.innerHTML = `<div class="card"><p style="color:var(--danger);">❌ Error: ${error.message}</p></div>`;
+        listDiv.innerHTML = `<div class="card"><p style="color:var(--danger);"> Error: ${error.message}</p></div>`;
         console.error('Load approval error:', error);
     } finally {
         hideLoadingModal();
@@ -85,14 +85,14 @@ async function loadApprovalData(type) {
 function renderTransactionList(transactions) {
     const listDiv = document.getElementById('approvalList');
     
-    let html = '<div class="card"><h3>📋 Daftar Transaksi Pending</h3>';
+    let html = '<div class="card"><h3> Daftar Transaksi Pending</h3>';
     html += '<table class="table"><thead><tr>';
     html += '<th>Kode</th><th>Tipe</th><th>Item</th><th>Qty</th><th>Requester</th><th>Tanggal</th><th>Detail</th><th>Aksi</th></tr></thead><tbody>';
     
     transactions.forEach(t => {
         const typeBadge = t.type === 'IN' 
-            ? '<span class="badge badge-in">📦 MASUK</span>' 
-            : '<span class="badge badge-out">📤 KELUAR</span>';
+            ? '<span class="badge badge-in"> MASUK</span>' 
+            : '<span class="badge badge-out"> KELUAR</span>';
         
         let detailInfo = t.type === 'IN' 
             ? `<span class="small">Supplier: <b>${t.supplier_name || '-'}</b></span>`
@@ -180,7 +180,7 @@ async function handleApprovalAction(action, id, transactionData = null) {
                         // Show success modal with PDF download option
                         showApprovalSuccessModal(transactionData);
                     } else {
-                        showMessageModal('✅ Sukses', data.message, false);
+                        showMessageModal(' Sukses', data.message, false);
                     }
                     
                     // Reload data
@@ -191,7 +191,7 @@ async function handleApprovalAction(action, id, transactionData = null) {
                     if (typeof loadSupervisorStats === 'function') loadSupervisorStats();
                     
                 } else {
-                    showMessageModal('❌ Gagal', data.message, false);
+                    showMessageModal(' Gagal', data.message, false);
                 }
             } catch (error) {
                 showMessageModal('Error', 'Koneksi gagal: ' + error.message, false);
@@ -210,7 +210,7 @@ function showApprovalSuccessModal(transaction) {
     
     const modalContent = `
         <div style="text-align:center;">
-            <div style="font-size:3rem; margin-bottom:10px;">✅</div>
+            <div style="font-size:3rem; margin-bottom:10px;"></div>
             <h3 style="color:var(--success); margin:0 0 10px 0;">Transaksi Berhasil Di-Approve!</h3>
             
             <div style="background:#f0f9ff; padding:15px; border-radius:8px; margin:20px 0; text-align:left;">
@@ -222,7 +222,7 @@ function showApprovalSuccessModal(transaction) {
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Type:</strong></td>
-                        <td style="padding:5px 0;">${transaction.type === 'IN' ? '📦 BARANG MASUK' : '📤 BARANG KELUAR'}</td>
+                        <td style="padding:5px 0;">${transaction.type === 'IN' ? ' BARANG MASUK' : ' BARANG KELUAR'}</td>
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Item:</strong></td>
@@ -241,13 +241,13 @@ function showApprovalSuccessModal(transaction) {
             
             <div style="background:#dcfce7; padding:15px; border-radius:8px; margin:20px 0; border-left:4px solid var(--success);">
                 <p style="margin:0; font-weight:600; color:#166534;">
-                    💾 Download nota PDF dengan QR code untuk dokumentasi dan verifikasi
+                     Download nota PDF dengan QR code untuk dokumentasi dan verifikasi
                 </p>
             </div>
             
             <div style="display:flex; gap:12px; justify-content:center; margin-top:20px;">
                 <button class="btn success" onclick="generateNotaPDFFromApproval()">
-                    📄 Download PDF Nota
+                     Download PDF Nota
                 </button>
                 <button class="btn primary" onclick="closeApprovalSuccessModal()">
                     Tutup

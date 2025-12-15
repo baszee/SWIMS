@@ -1,7 +1,7 @@
 <div class="card">
   <div style="display: flex; align-items: center; margin-bottom: 5px;">
     <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 1.5rem;">📤</span> Barang Keluar
+        <span style="font-size: 1.5rem;"></span> Barang Keluar
     </h2>
   </div>
   
@@ -49,7 +49,7 @@
   </form>
   
   <div class="card" style="margin-top:16px;background:#dbeafe;border-color:#3b82f6;">
-    <h4 style="margin-top:0;">📋 Catatan</h4>
+    <h4 style="margin-top:0;"> Catatan</h4>
     <p class="small" style="color:#1e3a8a;margin:0;">
         • Transaksi keluar disimpan sebagai <strong>PENDING</strong> sampai Supervisor approve<br>
         • Stok akan dikurangi <strong>saat approved</strong><br>

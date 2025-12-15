@@ -1,7 +1,7 @@
 <div class="card">
   <div style="display: flex; align-items: center; margin-bottom: 5px;">
     <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 1.5rem;">📦</span> Barang Masuk
+        <span style="font-size: 1.5rem;"></span> Barang Masuk
     </h2>
   </div>
   
@@ -48,7 +48,7 @@
   </form>
   
   <div class="card" style="margin-top:16px;background:#fef3c7;border-color:#fbbf24;">
-    <h4 style="margin-top:0;">💡 Cara Kerja</h4>
+    <h4 style="margin-top:0;"> Cara Kerja</h4>
     <p class="small" style="color:#78350f;margin:0;">
         <strong>1.</strong> Pilih Klien/Supplier dahulu<br>
         <strong>2.</strong> Ketik SKU atau Nama Barang:<br>

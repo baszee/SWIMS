@@ -4,8 +4,8 @@ FILE: pages/admin_view_stock.php - Read-Only Stock View for Admin
 
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>📦 View Stock (Read-Only)</h2>
-        <button class="btn primary btn-sm" onclick="exportStockToExcel()">📄 Export to Excel</button>
+        <h2> View Stock (Read-Only)</h2>
+        <button class="btn primary btn-sm" onclick="exportStockToExcel()"> Export to Excel</button>
     </div>
     <p class="small">Administrator dapat melihat stok gudang per klien (read-only untuk keamanan).</p>
 </div>
@@ -32,13 +32,13 @@ FILE: pages/admin_view_stock.php - Read-Only Stock View for Admin
 <div class="card">
     <div style="display:grid; grid-template-columns: 1fr 2fr; gap:16px;">
         <div>
-            <label style="margin:0 0 8px 0;">🏢 Filter by Supplier/Client:</label>
+            <label style="margin:0 0 8px 0;"> Filter by Supplier/Client:</label>
             <select id="supplierFilter" onchange="filterStock()" style="margin:0; width:100%;">
                 <option value="">-- Semua Supplier --</option>
             </select>
         </div>
         <div>
-            <label style="margin:0 0 8px 0;">🔍 Search SKU/Nama:</label>
+            <label style="margin:0 0 8px 0;"> Search SKU/Nama:</label>
             <input type="text" id="searchStock" placeholder="Ketik untuk mencari..." 
                    style="width:100%; margin:0;" oninput="searchStock()">
         </div>

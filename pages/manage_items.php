@@ -1,6 +1,6 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>📦 Manajemen Item (Stok Gudang)</h2>
+        <h2> Manajemen Item (Stok Gudang)</h2>
         <button class="btn primary" onclick="showItemForm()">+ Tambah Item Baru</button>
     </div>
     <p class="small">Administrator mengelola data master Item, SKU, Unit, dan Stok awal. Pastikan Supplier sudah terdaftar.</p>

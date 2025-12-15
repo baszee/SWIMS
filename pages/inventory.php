@@ -1,8 +1,8 @@
 <!-- FILE: pages/inventory.php - WAREHOUSE INVENTORY v3.0 -->
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>📦 Inventaris Stok Gudang</h2>
-        <button class="btn primary btn-sm" onclick="loadInventoryData()">🔄 Refresh Data</button>
+        <h2> Inventaris Stok Gudang</h2>
+        <button class="btn primary btn-sm" onclick="loadInventoryData()"> Refresh Data</button>
     </div>
     <p class="small">Daftar lengkap barang yang tersimpan di gudang SWIMS per Supplier/Client.</p>
 </div>
@@ -33,7 +33,7 @@
     <div style="display:grid; grid-template-columns: 1fr 2fr; gap:16px; align-items:end;">
         <!-- Supplier Filter -->
         <div>
-            <label style="margin:0 0 8px 0; font-weight:600;">🏢 Filter by Supplier/Client:</label>
+            <label style="margin:0 0 8px 0; font-weight:600;"> Filter by Supplier/Client:</label>
             <select id="filterSupplier" onchange="filterBySupplier()" style="margin:0; width:100%;">
                 <option value="">-- Semua Supplier --</option>
             </select>
@@ -41,7 +41,7 @@
         
         <!-- Search -->
         <div>
-            <label style="margin:0 0 8px 0; font-weight:600;">🔍 Cari SKU atau Nama Barang:</label>
+            <label style="margin:0 0 8px 0; font-weight:600;"> Cari SKU atau Nama Barang:</label>
             <input type="text" id="searchInventory" placeholder="Ketik untuk mencari..." 
                    style="width:100%; margin:0;" 
                    oninput="searchInventory()">

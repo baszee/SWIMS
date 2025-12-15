@@ -320,7 +320,9 @@ async function checkSessionAndRender(){
             storageSet('swims_current_user', data.user); 
             
             // Set role color
-            setRoleColor(data.user.role);
+            if (window.ThemeManager) {
+            window.ThemeManager.applyTheme(data.user.role);
+            }
             
             // Render sidebar
             renderSidebarUser();

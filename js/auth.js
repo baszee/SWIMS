@@ -88,7 +88,7 @@ function init_login(){
             // Loading modal akan dihilangkan di loadPage() untuk transisi yang lebih mulus
             
             if (data.success) {
-                msg.textContent = '✅ Login berhasil! Redirecting...';
+                msg.textContent = ' Login berhasil! Redirecting...';
                 msg.style.color = '#16a34a';
                 
                 // 1. Set Local Storage (Perlu ID user yang dikirim dari API)
@@ -98,6 +98,10 @@ function init_login(){
                     username: username, 
                     role: data.role 
                 });
+
+                if (window.ThemeManager) {
+                window.ThemeManager.applyTheme(data.role);
+                }       
                 
                 // 2. Render Sidebar Components 
                 window.renderSidebarUser(); 
@@ -109,13 +113,13 @@ function init_login(){
                 
             } else {
                 window.hideLoadingModal();
-                msg.textContent = '❌ ' + data.message;
+                msg.textContent = ' ' + data.message;
                 msg.style.color = '#ef4444';
             }
         })
         .catch(err => {
             window.hideLoadingModal();
-            msg.textContent = '❌ Error koneksi server. Cek WAMP dan path API.';
+            msg.textContent = ' Error koneksi server. Cek WAMP dan path API.';
             msg.style.color = '#ef4444';
             console.error('Login error:', err);
         });

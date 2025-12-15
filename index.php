@@ -74,6 +74,7 @@ session_start();
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <!-- App Scripts -->
+  <script src="js/theme_manager.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/user_management.js"></script> 
