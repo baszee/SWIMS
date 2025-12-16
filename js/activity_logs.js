@@ -448,17 +448,17 @@ console.log('📋 [ACTIVITY_LOGS.JS] Loading...');
     // ========================================
     function getActivityActionIcon(action) {
         const icons = {
-            'LOGIN': '🔐',
-            'LOGOUT': '🚪',
-            'CREATE': '➕',
-            'UPDATE': '✏️',
-            'DELETE': '🗑️',
-            'APPROVE': '✅',
-            'REJECT': '❌',
-            'VIEW': '👁️',
-            'EXPORT': '📄',
-            'LOGIN_FAILED': '⚠️',
-            'DEACTIVATE': '🔒'
+            'LOGIN': '',
+            'LOGOUT': '',
+            'CREATE': '',
+            'UPDATE': '',
+            'DELETE': '',
+            'APPROVE': '',
+            'REJECT': '',
+            'VIEW': '',
+            'EXPORT': '',
+            'LOGIN_FAILED': '',
+            'DEACTIVATE': ''
         };
         return icons[action] || '📋';
     }

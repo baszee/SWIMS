@@ -7,14 +7,14 @@ All logic moved to js/activity_logs.js
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <div>
             <h2 style="margin:0; display:flex; align-items:center; gap:10px;">
-                <span style="font-size:1.8rem;">📋</span> Activity Logs
+                <span style="font-size:1.8rem;"></span> Activity Logs
             </h2>
             <p class="small" style="margin:5px 0 0 0;">Complete audit trail untuk semua aktivitas sistem SWIMS</p>
         </div>
         <div style="display: flex; gap: 8px;">
-            <button class="btn btn-sm" onclick="exportActivityLogs()">📄 Export CSV</button>
-            <button class="btn btn-sm" onclick="cleanOldActivityLogs()">🗑️ Clean Old</button>
-            <button class="btn primary btn-sm" onclick="refreshActivityLogs()">🔄 Refresh</button>
+            <button class="btn btn-sm" onclick="exportActivityLogs()"> Export CSV</button>
+            <button class="btn btn-sm" onclick="cleanOldActivityLogs()"> Clean Old</button>
+            <button class="btn primary btn-sm" onclick="refreshActivityLogs()"> Refresh</button>
         </div>
     </div>
 </div>
@@ -29,7 +29,7 @@ All logic moved to js/activity_logs.js
 
 <!-- Filters -->
 <div class="card">
-    <h3 style="margin-top:0;">🔍 Filter & Search</h3>
+    <h3 style="margin-top:0;"> Filter & Search</h3>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
         <div>
             <label style="margin: 0 0 5px 0; font-weight:600;">User</label>
@@ -42,15 +42,15 @@ All logic moved to js/activity_logs.js
             <label style="margin: 0 0 5px 0; font-weight:600;">Action Type</label>
             <select id="filterAction" onchange="applyActivityFilters()" style="margin:0;">
                 <option value="">-- Semua Action --</option>
-                <option value="LOGIN">🔐 LOGIN</option>
-                <option value="LOGOUT">🚪 LOGOUT</option>
-                <option value="CREATE">➕ CREATE</option>
-                <option value="UPDATE">✏️ UPDATE</option>
-                <option value="DELETE">🗑️ DELETE</option>
-                <option value="APPROVE">✅ APPROVE</option>
-                <option value="REJECT">❌ REJECT</option>
-                <option value="VIEW">👁️ VIEW</option>
-                <option value="DEACTIVATE">🔒 DEACTIVATE</option>
+                <option value="LOGIN">LOGIN</option>
+                <option value="LOGOUT"> LOGOUT</option>
+                <option value="CREATE">CREATE</option>
+                <option value="UPDATE"> UPDATE</option>
+                <option value="DELETE">DELETE</option>
+                <option value="APPROVE">APPROVE</option>
+                <option value="REJECT">REJECT</option>
+                <option value="VIEW"> VIEW</option>
+                <option value="DEACTIVATE"> DEACTIVATE</option>
             </select>
         </div>
         
@@ -70,7 +70,7 @@ All logic moved to js/activity_logs.js
         <div style="display: flex; gap: 8px;">
             <input type="text" id="searchBox" placeholder="Ketik untuk mencari..." style="flex: 1; margin: 0;" onkeyup="handleSearchKeyup(event)">
             <button class="btn primary" onclick="applyActivityFilters()">🔍 Search</button>
-            <button class="btn" onclick="resetActivityFilters()">🔄 Reset</button>
+            <button class="btn" onclick="resetActivityFilters()"> Reset</button>
         </div>
     </div>
     

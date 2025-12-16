@@ -6,7 +6,7 @@ Version: 2.0 - Activity Logs Button Fixed + 3PL Enhancements
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
-            <h2 style="margin:0;">👥 Manajemen Pengguna</h2>
+            <h2 style="margin:0;"> Manajemen Pengguna</h2>
             <p class="small" style="margin:5px 0 0 0;">Kelola akses sistem SWIMS untuk semua role (Admin, Staff, Supervisor, Owner)</p>
         </div>
         <div style="display: flex; gap: 8px;">

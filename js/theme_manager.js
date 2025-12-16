@@ -1,89 +1,65 @@
 /**
  * =========================================================
- * ENHANCED ROLE-BASED THEMING SYSTEM v2.0
+ * THEME MANAGER v2.0 - Complete Implementation
  * File: js/theme_manager.js
  * 
- * Purpose: Centralized color management per role
  * Features:
- * - Dynamic CSS variable injection
- * - Role-specific color palettes
- * - Automatic component styling
- * - Dark mode support (future)
+ * - Dynamic role-based color injection
+ * - CSS variable management
+ * - Component styling automation
+ * - No hardcoded colors in HTML/JS
  * =========================================================
  */
 
 (function(window) {
     'use strict';
     
+    console.log('🎨 [ThemeManager v2.0] Loading...');
+    
     // ========================================
-    // ROLE COLOR PALETTES (Extended)
+    // ROLE COLOR PALETTES
     // ========================================
     const ROLE_THEMES = {
         admin: {
-            primary: '#E07A5F',      // Clay Red
+            primary: '#E07A5F',
             primaryRGB: '224, 122, 95',
             primaryDark: '#c86650',
             primaryLight: '#e89682',
             primaryPale: '#fceae6',
-            secondary: '#3b82f6',
-            accent: '#8b5cf6',
             gradient: 'linear-gradient(135deg, #E07A5F 0%, #c86650 100%)',
-            shadow: 'rgba(224, 122, 95, 0.25)',
-            // Status colors aligned with theme
-            success: '#10b981',
-            warning: '#f59e0b',
-            danger: '#dc2626',
-            info: '#3b82f6'
+            shadow: 'rgba(224, 122, 95, 0.25)'
         },
         owner: {
-            primary: '#D9A441',      // Golden Amber
+            primary: '#D9A441',
             primaryRGB: '217, 164, 65',
             primaryDark: '#c08f2e',
             primaryLight: '#e4b86a',
             primaryPale: '#fdf6e8',
-            secondary: '#10b981',
-            accent: '#ec4899',
             gradient: 'linear-gradient(135deg, #D9A441 0%, #c08f2e 100%)',
-            shadow: 'rgba(217, 164, 65, 0.25)',
-            success: '#10b981',
-            warning: '#f59e0b',
-            danger: '#dc2626',
-            info: '#3b82f6'
+            shadow: 'rgba(217, 164, 65, 0.25)'
         },
         supervisor: {
-            primary: '#6CA78C',      // Sage Green
+            primary: '#6CA78C',
             primaryRGB: '108, 167, 140',
             primaryDark: '#5a8f75',
             primaryLight: '#88bba4',
             primaryPale: '#eef6f3',
-            secondary: '#3b82f6',
-            accent: '#f59e0b',
             gradient: 'linear-gradient(135deg, #6CA78C 0%, #5a8f75 100%)',
-            shadow: 'rgba(108, 167, 140, 0.25)',
-            success: '#10b981',
-            warning: '#f59e0b',
-            danger: '#dc2626',
-            info: '#3b82f6'
+            shadow: 'rgba(108, 167, 140, 0.25)'
         },
         staff: {
-            primary: '#5E81AC',      // Dusty Blue
+            primary: '#5E81AC',
             primaryRGB: '94, 129, 172',
             primaryDark: '#4c6a8f',
             primaryLight: '#7a9ac0',
             primaryPale: '#edf2f7',
-            secondary: '#10b981',
-            accent: '#8b5cf6',
             gradient: 'linear-gradient(135deg, #5E81AC 0%, #4c6a8f 100%)',
-            shadow: 'rgba(94, 129, 172, 0.25)',
-            success: '#10b981',
-            warning: '#f59e0b',
-            danger: '#dc2626',
-            info: '#3b82f6'
+            shadow: 'rgba(94, 129, 172, 0.25)'
         }
     };
     
     // ========================================
-    // THEME MANAGER CLASS
+    // THEME MANAGER
     // ========================================
     class ThemeManager {
         constructor() {
@@ -94,7 +70,6 @@
         
         /**
          * Apply theme for specific role
-         * @param {string} role - User role (admin, owner, supervisor, staff)
          */
         applyTheme(role) {
             if (!role || !ROLE_THEMES[role]) {
@@ -105,15 +80,15 @@
             this.currentRole = role;
             this.currentTheme = ROLE_THEMES[role];
             
-            console.log(`🎨 [ThemeManager] Applying ${role} theme`);
+            console.log(`🎨 [ThemeManager] Applying ${role} theme`, this.currentTheme);
             
-            // 1. Update CSS Variables
+            // Update CSS Variables
             this.updateCSSVariables();
             
-            // 2. Inject Dynamic Styles
+            // Inject Dynamic Styles
             this.injectDynamicStyles();
             
-            // 3. Update Body Class
+            // Update Body Class
             this.updateBodyClass();
             
             console.log('✅ [ThemeManager] Theme applied successfully');
@@ -133,58 +108,50 @@
             root.style.setProperty('--current-role-pale', theme.primaryPale);
             root.style.setProperty('--current-role-gradient', theme.gradient);
             root.style.setProperty('--current-role-shadow', theme.shadow);
-            
-            // Status colors
-            root.style.setProperty('--theme-success', theme.success);
-            root.style.setProperty('--theme-warning', theme.warning);
-            root.style.setProperty('--theme-danger', theme.danger);
-            root.style.setProperty('--theme-info', theme.info);
         }
         
         /**
-         * Inject dynamic CSS rules for role-specific styling
+         * Inject dynamic CSS rules
          */
         injectDynamicStyles() {
-            // Remove existing dynamic styles
+            // Remove existing
             if (this.styleElement) {
                 this.styleElement.remove();
             }
             
-            // Create new style element
             this.styleElement = document.createElement('style');
             this.styleElement.id = 'dynamic-role-theme';
             
             const theme = this.currentTheme;
             
-            // Dynamic CSS rules
             const css = `
                 /* ===================================
                    DYNAMIC ROLE THEME - ${this.currentRole.toUpperCase()}
                    =================================== */
                 
                 /* Primary Buttons */
-                .btn.primary,
-                .btn-primary {
+                .btn.primary {
                     background: ${theme.gradient} !important;
                     border-color: ${theme.primary} !important;
                     box-shadow: 0 2px 4px ${theme.shadow} !important;
                 }
                 
-                .btn.primary:hover,
-                .btn-primary:hover {
+                .btn.primary:hover {
                     background: ${theme.primaryDark} !important;
                     transform: translateY(-1px);
                     box-shadow: 0 4px 8px ${theme.shadow} !important;
                 }
                 
-                /* Links & Active States */
-                a:hover,
-                .nav-item:hover,
-                .nav-item.active {
-                    color: ${theme.primary} !important;
+                /* Modal Buttons */
+                .modal-actions .btn.primary,
+                #modalConfirm {
+                    background: ${theme.gradient} !important;
                 }
                 
+                /* Links & Active States */
+                a:hover,
                 .nav-item.active {
+                    color: ${theme.primary} !important;
                     border-left-color: ${theme.primary} !important;
                 }
                 
@@ -196,58 +163,9 @@
                     box-shadow: 0 0 0 3px ${theme.primaryPale} !important;
                 }
                 
-                /* Role Badge */
-                .role-badge,
-                .user-role {
-                    background: ${theme.gradient} !important;
-                    color: white !important;
-                }
-                
-                /* Stat Boxes with Role Color */
-                .stat-box:not(.success):not(.warning):not(.danger),
-                .stat-card {
-                    background: ${theme.gradient} !important;
-                    color: white !important;
-                }
-                
-                .stat-card::before {
-                    background: ${theme.gradient} !important;
-                }
-                
-                /* Sidebar Header */
-                .sidebar-header {
-                    background: ${theme.gradient} !important;
-                }
-                
-                /* User Avatar */
-                .user-avatar {
-                    background: ${theme.gradient} !important;
-                }
-                
-                /* Cards with Role Accent */
-                .card:hover {
-                    border-color: ${theme.primaryLight} !important;
-                }
-                
                 /* Table Row Hover */
                 .table tbody tr:hover {
                     background: ${theme.primaryPale} !important;
-                }
-                
-                /* Progress Bars */
-                .progress-bar {
-                    background: ${theme.gradient} !important;
-                }
-                
-                /* Badges - Primary */
-                .badge.badge-primary {
-                    background: ${theme.primaryLight} !important;
-                    color: ${theme.primaryDark} !important;
-                }
-                
-                /* Loading Spinner */
-                .loading-spinner {
-                    border-left-color: ${theme.primary} !important;
                 }
                 
                 /* Selection Highlight */
@@ -256,10 +174,9 @@
                     color: white !important;
                 }
                 
-                /* Login Card for Current Role */
-                .card.login-${this.currentRole} {
-                    border-color: ${theme.primary} !important;
-                    box-shadow: 0 0 20px ${theme.shadow} !important;
+                /* Loading Spinner */
+                .loading-spinner {
+                    border-left-color: ${theme.primary} !important;
                 }
                 
                 /* Scrollbar (Webkit) */
@@ -269,32 +186,6 @@
                 
                 ::-webkit-scrollbar-thumb:hover {
                     background: ${theme.primary} !important;
-                }
-                
-                /* Tabs Active State */
-                .tab.active,
-                .menu button.active {
-                    border-bottom-color: ${theme.primary} !important;
-                    color: ${theme.primary} !important;
-                }
-                
-                /* Alert/Notice Boxes with Role Color */
-                .notice-primary,
-                .alert-primary {
-                    background: ${theme.primaryPale} !important;
-                    border-left-color: ${theme.primary} !important;
-                    color: ${theme.primaryDark} !important;
-                }
-                
-                /* Checkboxes & Radio (Custom) */
-                input[type="checkbox"]:checked,
-                input[type="radio"]:checked {
-                    accent-color: ${theme.primary} !important;
-                }
-                
-                /* Stats Grid - Override for consistent theming */
-                #adminDashboard .admin-stat {
-                    background: ${theme.gradient} !important;
                 }
             `;
             
@@ -306,25 +197,19 @@
          * Update body class for role-specific targeting
          */
         updateBodyClass() {
-            // Remove existing role classes
             document.body.classList.remove('role-admin', 'role-owner', 'role-supervisor', 'role-staff');
-            
-            // Add current role class
             document.body.classList.add(`role-${this.currentRole}`);
         }
         
         /**
-         * Get current theme colors
-         * @returns {Object} Theme object
+         * Get current theme
          */
         getTheme() {
             return this.currentTheme;
         }
         
         /**
-         * Get specific color from current theme
-         * @param {string} colorKey - Color key (e.g., 'primary', 'success')
-         * @returns {string} Color value
+         * Get specific color
          */
         getColor(colorKey) {
             return this.currentTheme ? this.currentTheme[colorKey] : null;
@@ -336,85 +221,9 @@
     // ========================================
     const themeManager = new ThemeManager();
     
-    // Expose to global scope
     window.ThemeManager = themeManager;
     window.ROLE_THEMES = ROLE_THEMES;
     
-    // Auto-apply theme when user is loaded
-    window.addEventListener('DOMContentLoaded', () => {
-        const user = window.currentUser ? window.currentUser() : null;
-        if (user && user.role) {
-            themeManager.applyTheme(user.role);
-        }
-    });
-    
-    console.log('✅ [ThemeManager] Module loaded');
+    console.log('✅ [ThemeManager v2.0] Module loaded');
     
 })(window);
-
-/**
- * =========================================================
- * INTEGRATION WITH APP.JS
- * Add to checkSessionAndRender() and after login
- * =========================================================
- */
-
-// Example integration in checkSessionAndRender():
-/*
-async function checkSessionAndRender(){
-    try {
-        const response = await fetch('api/auth.php?action=check_session');
-        const data = await response.json();
-        
-        if (data.logged_in) {
-            storageSet('swims_current_user', data.user); 
-            
-            // ✅ APPLY THEME IMMEDIATELY
-            if (window.ThemeManager) {
-                window.ThemeManager.applyTheme(data.user.role);
-            }
-            
-            renderSidebarUser();
-            renderSidebarNav();
-            
-            const currentHash = window.location.hash.replace('#', '');
-            if (!currentHash || currentHash === 'login') {
-                loadPage(roleLanding(data.user.role));
-            } else {
-                loadPage(currentHash);
-            }
-        } else {
-            storageSet('swims_current_user', null);
-            hideSidebar();
-            loadPage('login');
-        }
-    } catch (error) {
-        console.error('Error checking session:', error);
-        storageSet('swims_current_user', null);
-        hideSidebar();
-        loadPage('login');
-    }
-}
-*/
-
-// Example integration in auth.js after successful login:
-/*
-if (data.success) {
-    msg.textContent = '✅ Login berhasil! Redirecting...';
-    msg.style.color = '#16a34a';
-    
-    window.storageSet('swims_current_user', { 
-        username: username, 
-        role: data.role 
-    });
-    
-    // ✅ APPLY THEME BEFORE RENDERING
-    if (window.ThemeManager) {
-        window.ThemeManager.applyTheme(data.role);
-    }
-    
-    window.renderSidebarUser(); 
-    window.renderSidebarNav(); 
-    window.loadPage(window.roleLanding(data.role)); 
-}
-*/
