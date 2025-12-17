@@ -1,10 +1,11 @@
 /**
  * =========================================================
- * HISTORY_TRANSAKSI.JS - v3.0 with Hash Verification
+ * HISTORY_TRANSAKSI.JS - v3.1 FIXED
+ * Fix: Complete data for PDF, proper hash display
  * =========================================================
  */
 
-console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
+console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
 
 (function() {
     'use strict';
@@ -15,7 +16,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
     // INIT HISTORY PAGE
     // ========================================
     function init_history_transaksi() {
-        console.log('🚀 Init History Transaksi v3.0');
+        console.log('🚀 Init History Transaksi v3.1');
         loadNotaHistory();
     }
 
@@ -55,6 +56,13 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
                 return;
             }
             
+            console.log(`✅ Loaded ${allTransactionHistory.length} approved transactions`);
+            
+            // ✅ FIXED: Log hash status
+            const withHash = allTransactionHistory.filter(t => t.nota_hash).length;
+            const noHash = allTransactionHistory.length - withHash;
+            console.log(`   → With hash: ${withHash}, No hash: ${noHash}`);
+            
             renderNotaTable();
             
         } catch (error) {
@@ -69,7 +77,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
     }
 
     // ========================================
-    // RENDER NOTA TABLE
+    // RENDER NOTA TABLE - FIXED
     // ========================================
     function renderNotaTable() {
         const historyDiv = document.getElementById('notaHistoryList');
@@ -78,7 +86,14 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <div>
                     <h3 style="margin: 0;">📦 Approved Transactions</h3>
-                    <p class="small" style="margin: 5px 0 0 0;">Total: <strong>${allTransactionHistory.length}</strong> nota</p>
+                    <p class="small" style="margin: 5px 0 0 0;">
+                        Total: <strong>${allTransactionHistory.length}</strong> nota
+                        ${(() => {
+                            const withHash = allTransactionHistory.filter(t => t.nota_hash).length;
+                            const noHash = allTransactionHistory.length - withHash;
+                            return ` (🔐 ${withHash} signed, ⚠️ ${noHash} legacy)`;
+                        })()}
+                    </p>
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="searchNota" placeholder="🔍 Cari kode/item..." 
@@ -112,7 +127,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
     }
 
     // ========================================
-    // RENDER NOTA ROW
+    // RENDER NOTA ROW - FIXED
     // ========================================
     function renderNotaRow(t, index) {
         const notaNumber = `NOTE-${t.id}-${Date.now().toString().slice(-6)}`;
@@ -120,10 +135,10 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
             ? '<span class="badge badge-in">📦 MASUK</span>' 
             : '<span class="badge badge-out">📤 KELUAR</span>';
         
-        // Signature badge
+        // ✅ FIXED: Signature badge dengan warna berbeda
         const signatureBadge = t.nota_hash 
-            ? '<span class="badge" style="background:var(--success); color:white;">🔐 Signed</span>'
-            : '<span class="badge" style="background:#94a3b8; color:white;">⚠️ No Hash</span>';
+            ? '<span class="badge" style="background:#10b981; color:white;">🔐 Signed</span>'
+            : '<span class="badge" style="background:#f59e0b; color:white;">⚠️ Legacy</span>';
         
         return `
             <tr>
@@ -179,7 +194,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
     }
 
     // ========================================
-    // VIEW NOTA DETAIL
+    // VIEW NOTA DETAIL - FIXED
     // ========================================
     function viewNotaDetail(transaction) {
         const detailHTML = `
@@ -196,7 +211,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
                 ` : `
                     <div style="background:#fef3c7; padding:12px; border-radius:6px; margin:10px 0; border-left:4px solid #f59e0b;">
                         <p style="margin:0; color:#92400e; font-size:0.9rem;">
-                            ⚠️ Transaksi ini tidak memiliki signature hash (mungkin transaksi lama sebelum sistem hash diterapkan)
+                            ⚠️ Transaksi legacy (approved sebelum sistem hash diterapkan)
                         </p>
                     </div>
                 `}
@@ -224,7 +239,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Requester:</td>
-                        <td style="padding: 8px;">${transaction.requester}</td>
+                        <td style="padding: 8px;">${transaction.requester || '-'}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Approver:</td>
@@ -268,10 +283,14 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
     }
 
     // ========================================
-    // GENERATE PDF (using unified generator)
+    // GENERATE PDF - FIXED
     // ========================================
     function generateNotaPDF(transaction) {
         console.log('📄 Generate PDF from history:', transaction.transaction_code);
+        console.log('   → Has hash:', !!transaction.nota_hash);
+        console.log('   → Has recipient:', !!transaction.recipient_name);
+        console.log('   → Has supplier:', !!transaction.supplier_name);
+        console.log('   → Has unit:', !!transaction.unit);
         
         if (typeof generateSecureNotaPDF === 'function') {
             generateSecureNotaPDF(
@@ -284,7 +303,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
                             `Nota PDF <strong>${result.filename}</strong> berhasil didownload.<br><br>
                             ${result.has_signature 
                                 ? '<span style="color:var(--success);">🔐 Protected by digital signature</span>' 
-                                : '<span style="color:#f59e0b;">⚠️ No digital signature (old transaction)</span>'}`,
+                                : '<span style="color:#f59e0b;">⚠️ Legacy transaction (no digital signature)</span>'}`,
                             false
                         );
                     }
@@ -315,8 +334,8 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
             
             if (!transaction.nota_hash) {
                 if (typeof showMessageModal === 'function') {
-                    showMessageModal('⚠️ Warning', 
-                        'Transaksi ini tidak memiliki signature hash.<br>Mungkin transaksi lama sebelum sistem hash diterapkan.', 
+                    showMessageModal('⚠️ Legacy Transaction', 
+                        'Transaksi ini tidak memiliki signature hash.<br>Ini adalah transaksi lama yang di-approve sebelum sistem hash diterapkan.', 
                         false
                     );
                 }
@@ -375,7 +394,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
         allTransactionHistory.forEach(t => {
             const approvalDate = t.approval_date ? new Date(t.approval_date).toLocaleString('id-ID') : '-';
             const hasSignature = t.nota_hash ? 'Yes' : 'No';
-            csv += `"${t.transaction_code}","${t.type}","${t.item_name}","${t.sku}",${t.quantity},"${t.requester}","${t.approver || '-'}","${approvalDate}","${hasSignature}"\n`;
+            csv += `"${t.transaction_code}","${t.type}","${t.item_name}","${t.sku}",${t.quantity},"${t.requester || '-'}","${t.approver || '-'}","${approvalDate}","${hasSignature}"\n`;
         });
         
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -402,5 +421,5 @@ console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
     window.verifyNotaHash = verifyNotaHash;
     window.exportNotaList = exportNotaList;
 
-    console.log('✅ [HISTORY_TRANSAKSI v3.0] Module loaded with hash verification');
+    console.log('✅ [HISTORY_TRANSAKSI v3.1] Module loaded FIXED');
 })();

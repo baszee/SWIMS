@@ -1,8 +1,8 @@
 <?php
 /**
  * =========================================================
- * FILE: api/approval.php - ENHANCED with Hash Signature
- * Version: 3.0 - Digital Signature Implementation
+ * FILE: api/approval.php - FIXED v4.1
+ * Fix: Complete transaction data return with all required fields
  * =========================================================
  */
 session_start();
@@ -119,12 +119,19 @@ try {
         // A. APPROVE TRANSAKSI (dengan Hash Signature)
         // ================================================================
         if ($action === 'approve_transaction') {
+            // ✅ FIX: Query dengan JOIN lengkap untuk ambil SEMUA data
             $stmt = $pdo->prepare("
-                SELECT t.*, i.sku, i.name as item_name, i.unit, 
-                       s.name as supplier_name
+                SELECT 
+                    t.*,
+                    i.sku, 
+                    i.name as item_name, 
+                    i.unit,
+                    s.name as supplier_name,
+                    u_req.username as requester_name
                 FROM transactions t
                 JOIN items i ON t.item_id = i.id
                 LEFT JOIN suppliers s ON t.supplier_id = s.id
+                JOIN users u_req ON t.request_by_user_id = u_req.id
                 WHERE t.id = ? AND t.status = 'PENDING'
             ");
             $stmt->execute([$id]);
@@ -149,11 +156,11 @@ try {
                     'quantity' => $trx['quantity'],
                     'approval_date' => $approval_timestamp,
                     'approved_by' => $user_id,
-                    'secret_salt' => 'SWIMS_2025_SECRET_SALT' // Secret untuk keamanan tambahan
+                    'secret_salt' => 'SWIMS_2025_SECRET_SALT'
                 ]);
                 $nota_hash = hash('sha256', $hashData);
 
-                // Update transaction dengan status APPROVED + nota_hash
+                // Update transaction
                 $sqlStatus = "UPDATE transactions 
                               SET status = 'APPROVED', 
                                   approved_by_user_id = ?, 
@@ -182,14 +189,33 @@ try {
                     ]
                 );
                 
-                // ✅ Return transaction data WITH HASH untuk generate PDF
-                $trx['nota_hash'] = $nota_hash;
-                $trx['approval_date'] = $approval_timestamp;
-                $trx['approver'] = $username;
-                $trx['requester'] = $trx['requester_name'] ?? 'Unknown';
+                // ✅ FIX: Tambahkan SEMUA field yang dibutuhkan PDF generator
+                $completeTransaction = [
+                    'id' => $trx['id'],
+                    'transaction_code' => $trx['transaction_code'],
+                    'type' => $trx['type'],
+                    'status' => 'APPROVED',
+                    'item_id' => $trx['item_id'],
+                    'sku' => $trx['sku'],
+                    'item_name' => $trx['item_name'],
+                    'name' => $trx['item_name'], // Alias untuk compatibility
+                    'unit' => $trx['unit'],
+                    'quantity' => $trx['quantity'],
+                    'note' => $trx['note'],
+                    'request_date' => $trx['request_date'],
+                    'approval_date' => $approval_timestamp,
+                    'nota_hash' => $nota_hash,
+                    'approver' => $username, // ✅ FIXED
+                    'approver_name' => $username, // ✅ FIXED
+                    'requester' => $trx['requester_name'], // ✅ FIXED
+                    'requester_name' => $trx['requester_name'], // ✅ FIXED
+                    'supplier_name' => $trx['supplier_name'],
+                    'recipient_name' => $trx['recipient_name'],
+                    'recipient_address' => $trx['recipient_address']
+                ];
                 
                 api_response(true, "Transaksi APPROVED dengan signature hash", [
-                    'transaction' => $trx,
+                    'transaction' => $completeTransaction,
                     'nota_hash_preview' => substr($nota_hash, 0, 16) . '...'
                 ]);
                 
@@ -207,7 +233,6 @@ try {
             $sql = "UPDATE transactions SET status = 'REJECTED', approved_by_user_id = ?, approval_date = NOW() WHERE id = ?";
             $pdo->prepare($sql)->execute([$user_id, $id]);
             
-            // Log activity
             $logger->log($user_id, $username, 'REJECT', "Rejected transaction ID: {$id}");
             
             api_response(true, "Transaksi REJECTED.");
@@ -220,7 +245,6 @@ try {
             $stmt = $pdo->prepare("UPDATE suppliers SET is_active = TRUE WHERE id = ?");
             $stmt->execute([$id]);
             
-            // Log activity
             $logger->log($user_id, $username, 'APPROVE', "Approved supplier ID: {$id}");
             
             api_response(true, "Supplier berhasil di-ACC.");
@@ -234,7 +258,6 @@ try {
             $stmt->execute([$id]);
             
             if ($stmt->rowCount() > 0) {
-                // Log activity
                 $logger->log($user_id, $username, 'REJECT', "Rejected and deleted supplier ID: {$id}");
                 
                 api_response(true, "Supplier ditolak dan dihapus.");

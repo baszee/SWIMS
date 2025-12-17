@@ -1,15 +1,15 @@
 <?php
 /**
  * =========================================================
- * FILE: api/admin_user.php - FIXED VERSION
- * Enhanced with Activity Logging & Hard Delete Support
- * FIX: Proper error handling & validation
+ * FILE: api/admin_user.php - FIXED v2.1
+ * Fix: Password validation now ACTIVE
  * =========================================================
  */
 
 session_start();
 include('../config/db_config.php');
 include('../utils/ActivityLogger.php');
+include('../utils/PasswordValidator.php'); // ✅ FIXED: Include validator
 
 header('Content-Type: application/json');
 
@@ -47,7 +47,6 @@ try {
             $stmt = $pdo->query("SELECT id, username, role, is_active, created_at FROM users ORDER BY created_at DESC");
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Log view action
             $logger->log(
                 $admin_id,
                 $admin_username,
@@ -70,6 +69,15 @@ try {
 
             if (empty($username) || empty($role)) {
                 api_response(false, "Username dan Role wajib diisi.", null, 400);
+            }
+            
+            // ✅ FIXED: Validate password strength
+            $validation = PasswordValidator::validate($password);
+            if (!$validation['valid']) {
+                api_response(false, $validation['message'], [
+                    'errors' => $validation['errors'],
+                    'strength' => $validation['strength']
+                ], 400);
             }
             
             // Hash password
@@ -96,7 +104,8 @@ try {
                 [
                     'new_user_id' => $new_user_id,
                     'new_username' => $username,
-                    'role' => $role
+                    'role' => $role,
+                    'password_strength' => $validation['strength']
                 ]
             );
 
@@ -130,8 +139,16 @@ try {
             $sql = "UPDATE users SET role = ?, is_active = ?";
             $params = [$role, $is_active];
 
-            // Add password update if provided
+            // ✅ FIXED: Validate password if changing
             if (!empty($new_password)) {
+                $validation = PasswordValidator::validate($new_password);
+                if (!$validation['valid']) {
+                    api_response(false, $validation['message'], [
+                        'errors' => $validation['errors'],
+                        'strength' => $validation['strength']
+                    ], 400);
+                }
+                
                 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
                 $sql .= ", password = ?";
                 $params[] = $hashed_password;
@@ -147,7 +164,7 @@ try {
             $changes = [];
             if ($old_data['role'] != $role) $changes[] = "role: {$old_data['role']} → {$role}";
             if ($old_data['is_active'] != $is_active) $changes[] = "status: " . ($old_data['is_active'] ? 'active' : 'inactive') . " → " . ($is_active ? 'active' : 'inactive');
-            if (!empty($new_password)) $changes[] = "password changed";
+            if (!empty($new_password)) $changes[] = "password changed (strength: {$validation['strength']})";
             
             $logger->log(
                 $admin_id,
@@ -203,12 +220,7 @@ try {
             }
             
             if ($permanent) {
-                // HARD DELETE - Remove from database
-                
-                // First, check if user has any related data that would cause FK constraint issues
-                // For now, we'll just delete the user directly
-                // In production, you might want to handle related data differently
-                
+                // HARD DELETE
                 try {
                     $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
                     $result = $stmt->execute([$id]);
@@ -219,7 +231,6 @@ try {
                         api_response(false, "Gagal menghapus user: " . $errorInfo[2], null, 500);
                     }
                     
-                    // Log delete action
                     $logger->log(
                         $admin_id,
                         $admin_username,
@@ -238,7 +249,6 @@ try {
                 } catch (PDOException $e) {
                     error_log("Delete user PDO error: " . $e->getMessage());
                     
-                    // Check if it's a foreign key constraint error
                     if (strpos($e->getMessage(), 'foreign key constraint') !== false || 
                         strpos($e->getMessage(), 'Cannot delete') !== false) {
                         api_response(false, "User tidak dapat dihapus karena masih memiliki data terkait di sistem (transaksi, item, dll). Gunakan Edit > Non-aktifkan untuk menonaktifkan user.", null, 409);
@@ -248,11 +258,10 @@ try {
                 }
                 
             } else {
-                // SOFT DELETE - Just deactivate
+                // SOFT DELETE
                 $stmt = $pdo->prepare("UPDATE users SET is_active = FALSE WHERE id = ?");
                 $stmt->execute([$id]);
                 
-                // Log deactivate action
                 $logger->log(
                     $admin_id,
                     $admin_username,
