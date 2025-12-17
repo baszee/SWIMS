@@ -1,8 +1,13 @@
 <?php
 /**
  * =========================================================
- * FILE: api/auth.php - Enhanced with Activity Logging
- * Purpose: Authentication with complete audit trail
+ * FILE: api/auth.php - ENHANCED with Security Features
+ * Version: 3.0
+ * Features:
+ * - Activity Logging
+ * - Session Timeout (30 minutes)
+ * - Rate Limiting
+ * - IP Tracking
  * =========================================================
  */
 
@@ -14,6 +19,48 @@ header('Content-Type: application/json');
 
 // Initialize logger
 $logger = new ActivityLogger($pdo);
+
+// ========================================
+// SESSION TIMEOUT CHECK (30 minutes)
+// ========================================
+if (isset($_SESSION['last_activity'])) {
+    $elapsed = time() - $_SESSION['last_activity'];
+    if ($elapsed > 1800) { // 30 minutes
+        $logger->log(
+            $_SESSION['user']['id'] ?? 0,
+            $_SESSION['user']['username'] ?? 'Unknown',
+            'LOGOUT',
+            'Session expired (timeout)',
+            ['elapsed_seconds' => $elapsed]
+        );
+        
+        session_destroy();
+        http_response_code(401);
+        exit(json_encode([
+            'success' => false, 
+            'message' => 'Session expired. Silakan login kembali.',
+            'session_expired' => true
+        ]));
+    }
+}
+$_SESSION['last_activity'] = time();
+
+// ========================================
+// RATE LIMITING (5 attempts per minute for login)
+// ========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $rateKey = 'login_rate_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '_' . date('YmdHi');
+    $currentCount = $_SESSION[$rateKey] ?? 0;
+
+    if ($currentCount >= 5) {
+        http_response_code(429);
+        exit(json_encode([
+            'success' => false, 
+            'message' => 'Terlalu banyak percobaan login. Tunggu 1 menit.'
+        ]));
+    }
+    $_SESSION[$rateKey] = $currentCount + 1;
+}
 
 // ========================================
 // POST: LOGIN
@@ -60,6 +107,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'role' => $user['role'],
                     'logged_at' => date('Y-m-d H:i:s')
                 ];
+                
+                // Set initial last_activity
+                $_SESSION['last_activity'] = time();
 
                 // Log successful login
                 $logger->log(
@@ -94,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // ❌ USER NOT FOUND
-            // Note: We don't have user_id here, so log with special ID
             $logger->log(
                 0, // Special ID for unknown users
                 $username,
@@ -137,8 +186,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 "User logged out",
                 [
                     'role' => $_SESSION['user']['role'],
-                    'logout_time' => date('Y-m-d H:i:s'),
-                    'session_duration' => 'calculated_if_needed'
+                    'logout_time' => date('Y-m-d H:i:s')
                 ]
             );
         }

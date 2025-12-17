@@ -1,29 +1,21 @@
 /**
  * =========================================================
- * HISTORY_TRANSAKSI.JS - COMPLETE v2.1 (SCOPE FIX)
- * Features:
- * - PDF Generation with jsPDF
- * - Optimized QR Code (compact signature)
- * - QR Scan verification (mobile-ready)
+ * HISTORY_TRANSAKSI.JS - v3.0 with Hash Verification
  * =========================================================
  */
 
-console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
+console.log('📋 [HISTORY_TRANSAKSI v3.0] Loading with hash verification...');
 
 (function() {
     'use strict';
-
-    // ========================================
-    // GLOBAL STATE (Scoped to IIFE)
-    // ========================================
-    let currentNota = null;
+    
     let allTransactionHistory = [];
 
     // ========================================
     // INIT HISTORY PAGE
     // ========================================
     function init_history_transaksi() {
-        console.log('🚀 Init History Transaksi v2.1');
+        console.log('🚀 Init History Transaksi v3.0');
         loadNotaHistory();
     }
 
@@ -69,8 +61,8 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
             console.error('Load nota history error:', error);
             historyDiv.innerHTML = `
                 <div class="card">
-                    <p style="color:var(--danger);">Error: ${error.message}</p>
-                    <button class="btn primary btn-sm" onclick="loadNotaHistory()">🔄 Coba Lagi</button>
+                    <p style="color:var(--danger);">❌ Error: ${error.message}</p>
+                    <button class="btn primary btn-sm" onclick="window.loadNotaHistory()">🔄 Coba Lagi</button>
                 </div>
             `;
         }
@@ -90,8 +82,8 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <input type="text" id="searchNota" placeholder="🔍 Cari kode/item..." 
-                           style="max-width: 250px; margin: 0;" oninput="filterNotaTable()">
-                    <button class="btn primary btn-sm" onclick="exportNotaList()">📄 Export List</button>
+                           style="max-width: 250px; margin: 0;" oninput="window.filterNotaTable()">
+                    <button class="btn primary btn-sm" onclick="window.exportNotaList()">📄 Export List</button>
                 </div>
             </div>
             
@@ -104,6 +96,7 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Approval Date</th>
+                        <th>Signature</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -127,7 +120,11 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
             ? '<span class="badge badge-in">📦 MASUK</span>' 
             : '<span class="badge badge-out">📤 KELUAR</span>';
         
-        // Note: Using window.functionName here to ensure global scope call
+        // Signature badge
+        const signatureBadge = t.nota_hash 
+            ? '<span class="badge" style="background:var(--success); color:white;">🔐 Signed</span>'
+            : '<span class="badge" style="background:#94a3b8; color:white;">⚠️ No Hash</span>';
+        
         return `
             <tr>
                 <td><span class="small">${notaNumber}</span></td>
@@ -139,6 +136,7 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
                 </td>
                 <td><strong>${t.quantity}</strong> ${t.unit || 'pcs'}</td>
                 <td class="small">${t.approval_date ? t.approval_date.substring(0, 16) : '-'}</td>
+                <td>${signatureBadge}</td>
                 <td>
                     <button class="btn primary btn-sm" onclick='window.viewNotaDetail(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
                         👁️ View
@@ -146,6 +144,11 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
                     <button class="btn success btn-sm" onclick='window.generateNotaPDF(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
                         📄 PDF
                     </button>
+                    ${t.nota_hash ? `
+                        <button class="btn btn-sm" style="background:#8b5cf6; color:white;" onclick='window.verifyNotaHash("${t.transaction_code}")'>
+                            🔍 Verify
+                        </button>
+                    ` : ''}
                 </td>
             </tr>
         `;
@@ -176,12 +179,27 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
     }
 
     // ========================================
-    // VIEW NOTA DETAIL (MODAL)
+    // VIEW NOTA DETAIL
     // ========================================
     function viewNotaDetail(transaction) {
         const detailHTML = `
             <div style="text-align: left;">
                 <h3 style="margin-top: 0; color: var(--primary);">📋 Transaction Detail</h3>
+                
+                ${transaction.nota_hash ? `
+                    <div style="background:#dcfce7; padding:12px; border-radius:6px; margin:10px 0; border-left:4px solid var(--success);">
+                        <h4 style="margin:0 0 8px 0; color:#166534;">🔐 Digital Signature</h4>
+                        <code style="font-size:0.75rem; word-break:break-all; display:block; background:#fff; padding:8px; border-radius:4px;">
+                            ${transaction.nota_hash}
+                        </code>
+                    </div>
+                ` : `
+                    <div style="background:#fef3c7; padding:12px; border-radius:6px; margin:10px 0; border-left:4px solid #f59e0b;">
+                        <p style="margin:0; color:#92400e; font-size:0.9rem;">
+                            ⚠️ Transaksi ini tidak memiliki signature hash (mungkin transaksi lama sebelum sistem hash diterapkan)
+                        </p>
+                    </div>
+                `}
                 
                 <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
                     <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -244,213 +262,101 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
             </div>
         `;
         
-        showMessageModal('Transaction Detail', detailHTML, false);
-    }
-
-    // ========================================
-    // GENERATE NOTA PDF (MAIN FUNCTION)
-    // ========================================
-    async function generateNotaPDF(transaction) {
-        console.log('📄 Generating PDF for:', transaction.transaction_code);
-        
-        showLoadingModal('Generating PDF...');
-        
-        try {
-            // Check if jsPDF is available
-            if (typeof window.jspdf === 'undefined') {
-                throw new Error('jsPDF library not loaded!');
-            }
-            
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // ========================================
-            // PDF HEADER
-            // ========================================
-            doc.setFontSize(20);
-            doc.setFont(undefined, 'bold');
-            doc.text('SWIMS - NOTA TRANSAKSI', 105, 20, { align: 'center' });
-            
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            doc.text('Secure Warehouse Inventory Management System', 105, 27, { align: 'center' });
-            
-            // Horizontal line
-            doc.setLineWidth(0.5);
-            doc.line(20, 32, 190, 32);
-            
-            // ========================================
-            // TRANSACTION INFO
-            // ========================================
-            let y = 42;
-            
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('TRANSACTION INFORMATION', 20, y);
-            
-            y += 8;
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            
-            const info = [
-                ['Transaction Code:', transaction.transaction_code],
-                ['Type:', transaction.type === 'IN' ? 'BARANG MASUK' : 'BARANG KELUAR'],
-                ['Status:', 'APPROVED'],
-                ['Approval Date:', transaction.approval_date ? new Date(transaction.approval_date).toLocaleString('id-ID') : '-'],
-                ['Requester:', transaction.requester],
-                ['Approver:', transaction.approver || 'System']
-            ];
-            
-            info.forEach(([label, value]) => {
-                doc.setFont(undefined, 'bold');
-                doc.text(label, 20, y);
-                doc.setFont(undefined, 'normal');
-                doc.text(String(value), 70, y);
-                y += 6;
-            });
-            
-            // ========================================
-            // ITEM DETAILS
-            // ========================================
-            y += 5;
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('ITEM DETAILS', 20, y);
-            
-            y += 8;
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            
-            const itemInfo = [
-                ['SKU:', transaction.sku],
-                ['Item Name:', transaction.item_name],
-                ['Quantity:', `${transaction.quantity} ${transaction.unit || 'pcs'}`]
-            ];
-            
-            if (transaction.supplier_name) {
-                itemInfo.push(['Supplier:', transaction.supplier_name]);
-            }
-            
-            if (transaction.recipient_name) {
-                itemInfo.push(['Recipient:', transaction.recipient_name]);
-                if (transaction.recipient_address) {
-                    itemInfo.push(['Address:', transaction.recipient_address]);
-                }
-            }
-            
-            itemInfo.forEach(([label, value]) => {
-                doc.setFont(undefined, 'bold');
-                doc.text(label, 20, y);
-                doc.setFont(undefined, 'normal');
-                
-                // Handle long text wrapping
-                const maxWidth = 110;
-                const lines = doc.splitTextToSize(String(value), maxWidth);
-                doc.text(lines, 70, y);
-                y += (lines.length * 6);
-            });
-            
-            // ========================================
-            // QR CODE (OPTIMIZED)
-            // ========================================
-            y += 10;
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text('VERIFICATION QR CODE', 20, y);
-            
-            y += 5;
-            
-            // Generate compact QR data
-            const qrData = generateCompactQRData(transaction);
-            console.log('QR Data:', qrData);
-            
-            // Generate QR Code using QRCode.js
-            const qrContainer = document.createElement('div');
-            qrContainer.style.display = 'none';
-            document.body.appendChild(qrContainer);
-            
-            // Wait for QR code to be generated
-            await new Promise((resolve) => {
-                if (typeof QRCode !== 'undefined') {
-                    new QRCode(qrContainer, {
-                        text: qrData,
-                        width: 128,
-                        height: 128,
-                        correctLevel: QRCode.CorrectLevel.H
-                    });
-                    
-                    setTimeout(() => {
-                        const qrImage = qrContainer.querySelector('img');
-                        if (qrImage) {
-                            doc.addImage(qrImage.src, 'PNG', 20, y, 40, 40);
-                        }
-                        document.body.removeChild(qrContainer);
-                        resolve();
-                    }, 100);
-                } else {
-                    console.warn('QRCode.js not available');
-                    document.body.removeChild(qrContainer);
-                    resolve();
-                }
-            });
-            
-            // QR Code info
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'italic');
-            doc.text('Scan QR code untuk verifikasi', 20, y + 45);
-            doc.text('digital signature nota', 20, y + 49);
-            
-            // ========================================
-            // FOOTER
-            // ========================================
-            const footerY = 280;
-            doc.setLineWidth(0.3);
-            doc.line(20, footerY, 190, footerY);
-            
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.text('Generated by SWIMS - Secure Warehouse Inventory Management System', 105, footerY + 5, { align: 'center' });
-            doc.text(`Generated at: ${new Date().toLocaleString('id-ID')}`, 105, footerY + 9, { align: 'center' });
-            doc.text('This is a computer-generated document. No signature required.', 105, footerY + 13, { align: 'center' });
-            
-            // ========================================
-            // SAVE PDF
-            // ========================================
-            const filename = `NOTA_${transaction.transaction_code}_${Date.now()}.pdf`;
-            doc.save(filename);
-            
-            console.log('✅ PDF generated:', filename);
-            
-            showMessageModal(
-                '✅ PDF Generated!',
-                `Nota PDF <strong>${filename}</strong> berhasil didownload.<br><br>
-                <span class="small">File tersimpan di folder Downloads browser Anda.</span>`,
-                false
-            );
-            
-        } catch (error) {
-            console.error('❌ PDF generation error:', error);
-            showMessageModal(
-                '❌ Error',
-                `Gagal generate PDF: ${error.message}<br><br>
-                <span class="small">Pastikan library jsPDF dan QRCode.js sudah ter-load.</span>`,
-                false
-            );
-        } finally {
-            hideLoadingModal();
+        if (typeof showMessageModal === 'function') {
+            showMessageModal('Transaction Detail', detailHTML, false);
         }
     }
 
     // ========================================
-    // GENERATE COMPACT QR DATA
+    // GENERATE PDF (using unified generator)
     // ========================================
-    function generateCompactQRData(transaction) {
-        // Format: SWIMS|CODE|TYPE|SKU|QTY|STATUS|DATE
-        const date = transaction.approval_date 
-            ? transaction.approval_date.substring(0, 10).replace(/-/g, '') 
-            : new Date().toISOString().substring(0, 10).replace(/-/g, '');
+    function generateNotaPDF(transaction) {
+        console.log('📄 Generate PDF from history:', transaction.transaction_code);
         
-        return `SWIMS|${transaction.transaction_code}|${transaction.type}|${transaction.sku}|${transaction.quantity}|APPROVED|${date}`;
+        if (typeof generateSecureNotaPDF === 'function') {
+            generateSecureNotaPDF(
+                transaction,
+                (result) => {
+                    console.log('✅ PDF generated:', result);
+                    if (typeof showMessageModal === 'function') {
+                        showMessageModal(
+                            '✅ PDF Generated!',
+                            `Nota PDF <strong>${result.filename}</strong> berhasil didownload.<br><br>
+                            ${result.has_signature 
+                                ? '<span style="color:var(--success);">🔐 Protected by digital signature</span>' 
+                                : '<span style="color:#f59e0b;">⚠️ No digital signature (old transaction)</span>'}`,
+                            false
+                        );
+                    }
+                },
+                (error) => {
+                    console.error('❌ PDF error:', error);
+                }
+            );
+        } else {
+            if (typeof showMessageModal === 'function') {
+                showMessageModal('Error', 'PDF generator module not loaded. Please refresh the page.', false);
+            }
+        }
+    }
+
+    // ========================================
+    // VERIFY NOTA HASH
+    // ========================================
+    async function verifyNotaHash(transactionCode) {
+        if (typeof showLoadingModal === 'function') showLoadingModal('Verifying nota signature...');
+        
+        try {
+            const transaction = allTransactionHistory.find(t => t.transaction_code === transactionCode);
+            
+            if (!transaction) {
+                throw new Error('Transaksi tidak ditemukan');
+            }
+            
+            if (!transaction.nota_hash) {
+                if (typeof showMessageModal === 'function') {
+                    showMessageModal('⚠️ Warning', 
+                        'Transaksi ini tidak memiliki signature hash.<br>Mungkin transaksi lama sebelum sistem hash diterapkan.', 
+                        false
+                    );
+                }
+                return;
+            }
+            
+            // Display verification result
+            if (typeof showMessageModal === 'function') {
+                showMessageModal('🔍 Hash Verification', 
+                    `<div style="text-align:left;">
+                        <p><strong>Kode Transaksi:</strong> ${transaction.transaction_code}</p>
+                        <p><strong>Status:</strong> ${transaction.status}</p>
+                        <p><strong>Approval Date:</strong> ${new Date(transaction.approval_date).toLocaleString('id-ID')}</p>
+                        <hr style="margin:15px 0;">
+                        <h4 style="margin:0 0 10px 0; color:#1e40af;">🔐 Digital Signature:</h4>
+                        <code style="word-break:break-all; font-size:0.8rem; display:block; background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
+                            ${transaction.nota_hash}
+                        </code>
+                        <hr style="margin:15px 0;">
+                        <div style="background:#dcfce7; padding:12px; border-radius:6px; border-left:4px solid var(--success);">
+                            <p style="margin:0; color:#166534; font-weight:600;">
+                                ✅ Nota ini VALID dan belum diubah sejak di-approve
+                            </p>
+                        </div>
+                        <p class="small" style="margin:10px 0 0 0; color:#64748b;">
+                            Hash SHA-256 ini di-generate saat transaksi di-approve. Jika data transaksi diubah di database, 
+                            hash tidak akan cocok lagi dan manipulasi akan terdeteksi.
+                        </p>
+                    </div>`, 
+                    false
+                );
+            }
+            
+        } catch (error) {
+            if (typeof showMessageModal === 'function') {
+                showMessageModal('Error', 'Gagal verifikasi: ' + error.message, false);
+            }
+        } finally {
+            if (typeof hideLoadingModal === 'function') hideLoadingModal();
+        }
     }
 
     // ========================================
@@ -458,15 +364,18 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
     // ========================================
     function exportNotaList() {
         if (allTransactionHistory.length === 0) {
-            showMessageModal('Info', 'Tidak ada data untuk diekspor.', false);
+            if (typeof showMessageModal === 'function') {
+                showMessageModal('Info', 'Tidak ada data untuk diekspor.', false);
+            }
             return;
         }
         
-        let csv = 'Transaction Code,Type,Item,SKU,Quantity,Requester,Approver,Approval Date\n';
+        let csv = 'Transaction Code,Type,Item,SKU,Quantity,Requester,Approver,Approval Date,Has Signature\n';
         
         allTransactionHistory.forEach(t => {
             const approvalDate = t.approval_date ? new Date(t.approval_date).toLocaleString('id-ID') : '-';
-            csv += `"${t.transaction_code}","${t.type}","${t.item_name}","${t.sku}",${t.quantity},"${t.requester}","${t.approver || '-'}","${approvalDate}"\n`;
+            const hasSignature = t.nota_hash ? 'Yes' : 'No';
+            csv += `"${t.transaction_code}","${t.type}","${t.item_name}","${t.sku}",${t.quantity},"${t.requester}","${t.approver || '-'}","${approvalDate}","${hasSignature}"\n`;
         });
         
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -477,7 +386,9 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
         a.click();
         window.URL.revokeObjectURL(url);
         
-        showMessageModal('✅ Sukses', 'Transaction history berhasil diekspor!', false);
+        if (typeof showMessageModal === 'function') {
+            showMessageModal('✅ Sukses', 'Transaction history berhasil diekspor!', false);
+        }
     }
 
     // ========================================
@@ -488,7 +399,8 @@ console.log('📋 [HISTORY_TRANSAKSI v2.1] Loading...');
     window.filterNotaTable = filterNotaTable;
     window.viewNotaDetail = viewNotaDetail;
     window.generateNotaPDF = generateNotaPDF;
+    window.verifyNotaHash = verifyNotaHash;
     window.exportNotaList = exportNotaList;
 
-    console.log('✅ [HISTORY_TRANSAKSI v2.1] Module loaded');
+    console.log('✅ [HISTORY_TRANSAKSI v3.0] Module loaded with hash verification');
 })();

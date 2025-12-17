@@ -87,6 +87,7 @@ session_start();
   <script src="js/inventory.js"></script>
   <script src="js/activity_logs.js"></script>
   <script src="js/owner_report.js"></script>
+  <script src="js/pdf_generator.js"></script>
     
   <script>
     // Initialize app
