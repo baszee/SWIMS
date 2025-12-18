@@ -1,12 +1,13 @@
 <?php
 /**
  * =========================================================
- * FILE: api/auth.php - FINAL SECURE VERSION (v4.0)
+ * FILE: api/auth.php - ULTIMATE SECURE VERSION (v5.0)
  * Features:
- * - Activity Logging (Preserved)
- * - Session Timeout (30 minutes)
- * - IP-Based Rate Limiting (Database Backed) 🔥
- * - Anti-Session Fixation (Regenerate ID) 🔥
+ * - Activity Logging (Full Detail)
+ * - Session Timeout (30 min)
+ * - Database Rate Limiting (IP Based - Anti Brute Force)
+ * - Anti-Session Fixation
+ * - CSRF Token Generation (NEW!)
  * =========================================================
  */
 
@@ -21,11 +22,11 @@ header('Content-Type: application/json');
 $logger = new ActivityLogger($pdo);
 
 // ========================================
-// 1. SESSION TIMEOUT CHECK (30 minutes)
+// 1. SESSION TIMEOUT CHECK
 // ========================================
 if (isset($_SESSION['last_activity'])) {
     $elapsed = time() - $_SESSION['last_activity'];
-    if ($elapsed > 1800) { // 30 minutes
+    if ($elapsed > 1800) { // 30 menit
         $logger->log(
             $_SESSION['user']['id'] ?? 0,
             $_SESSION['user']['username'] ?? 'Unknown',
@@ -47,10 +48,10 @@ if (isset($_SESSION['last_activity'])) {
 $_SESSION['last_activity'] = time();
 
 // ========================================
-// 2. DATABASE RATE LIMITING (IP BASED) 🔥
+// 2. DATABASE RATE LIMITING FUNCTIONS (IP BASED)
 // ========================================
 function checkRateLimit($pdo, $ip) {
-    // Bersihkan log lama (opsional, biar tabel gak penuh)
+    // Hapus log lama (opsional: reset setelah 1 hari)
     // $pdo->query("DELETE FROM login_attempts WHERE locked_until < NOW() - INTERVAL 1 DAY");
 
     $stmt = $pdo->prepare("SELECT * FROM login_attempts WHERE ip_address = ?");
@@ -62,7 +63,7 @@ function checkRateLimit($pdo, $ip) {
         if ($attempt['locked_until'] && new DateTime($attempt['locked_until']) > new DateTime()) {
             return false; // TERKUNCI
         }
-        // Reset jika waktu kunci sudah lewat
+        // Reset otomatis jika waktu kunci sudah lewat
         if ($attempt['locked_until'] && new DateTime($attempt['locked_until']) <= new DateTime()) {
             $pdo->prepare("UPDATE login_attempts SET attempts = 0, locked_until = NULL WHERE ip_address = ?")->execute([$ip]);
             return true;
@@ -79,7 +80,7 @@ function recordFailedLogin($pdo, $ip) {
     if ($attempt) {
         $newAttempts = $attempt['attempts'] + 1;
         if ($newAttempts >= 5) {
-            // Kunci selama 15 menit
+            // Kunci IP selama 15 menit
             $lockedUntil = date('Y-m-d H:i:s', strtotime('+15 minutes'));
             $pdo->prepare("UPDATE login_attempts SET attempts = ?, last_attempt = NOW(), locked_until = ? WHERE ip_address = ?")
                 ->execute([$newAttempts, $lockedUntil, $ip]);
@@ -97,22 +98,24 @@ function resetLoginAttempts($pdo, $ip) {
     $pdo->prepare("DELETE FROM login_attempts WHERE ip_address = ?")->execute([$ip]);
 }
 
-// Cek Rate Limit Sebelum Proses Login
+// Cek IP Client
 $clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!checkRateLimit($pdo, $clientIP)) {
-        http_response_code(429); // Too Many Requests
-        exit(json_encode([
-            'success' => false, 
-            'message' => 'Terlalu banyak percobaan gagal. IP Anda diblokir sementara selama 15 menit.'
-        ]));
-    }
-}
 
 // ========================================
 // POST: LOGIN
 // ========================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    // 🛡️ CEK RATE LIMIT SEBELUM PROSES
+    if (!checkRateLimit($pdo, $clientIP)) {
+        http_response_code(429);
+        $logger->log(0, 'Unknown', 'LOGIN_BLOCKED', "IP $clientIP blocked due to too many attempts");
+        exit(json_encode([
+            'success' => false, 
+            'message' => 'Terlalu banyak percobaan gagal. IP Anda diblokir sementara (15 menit).'
+        ]));
+    }
+
     $data = json_decode(file_get_contents("php://input"), true);
     $username = trim($data['username'] ?? '');
     $password = $data['password'] ?? '';
@@ -124,29 +127,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        // Get user from database
+        // Cek User
         $stmt = $pdo->prepare("SELECT id, username, password, role, is_active FROM users WHERE username = ? AND role = ?");
         $stmt->execute([$username, $role_request]);
         $user = $stmt->fetch();
 
         if ($user) {
-            // Check if user is active
+            // Cek Aktif
             if ($user['is_active'] == 0) {
-                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Login failed: Account inactive", ['role' => $role_request]);
+                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Account inactive", ['role' => $role_request]);
                 echo json_encode(['success' => false, 'message' => 'Akun Anda telah dinonaktifkan.']);
                 exit;
             }
             
-            // Verify password
+            // Verifikasi Password
             if (password_verify($password, $user['password'])) {
                 
-                // 🔥 SECURITY FIX 1: Session Fixation
+                // ✅ 1. Anti Session Fixation
                 session_regenerate_id(true);
 
-                // 🔥 SECURITY FIX 2: Reset Rate Limit jika sukses
+                // ✅ 2. Reset Rate Limit (Hapus dari DB karena sukses)
                 resetLoginAttempts($pdo, $clientIP);
 
-                // ✅ LOGIN SUCCESS
+                // ✅ 3. Generate CSRF Token (BARU DITAMBAHKAN DISINI)
+                if (empty($_SESSION['csrf_token'])) {
+                    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+                }
+
+                // Set Session
                 $_SESSION['user'] = [
                     'id' => $user['id'],
                     'username' => $user['username'],
@@ -155,27 +163,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
                 $_SESSION['last_activity'] = time();
 
-                $logger->log($user['id'], $user['username'], 'LOGIN', "User logged in as {$user['role']}", ['session_id' => session_id()]);
+                // Log Sukses
+                $logger->log($user['id'], $user['username'], 'LOGIN', "Logged in as {$user['role']}", ['session_id' => session_id()]);
 
                 echo json_encode(['success' => true, 'message' => 'Login berhasil!', 'role' => $user['role']]);
                 
             } else {
-                // ❌ WRONG PASSWORD
-                recordFailedLogin($pdo, $clientIP); // Catat kegagalan ke DB
+                // ❌ Salah Password
+                recordFailedLogin($pdo, $clientIP); // Catat ke DB
                 
                 $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Wrong password", ['role' => $role_request]);
                 echo json_encode(['success' => false, 'message' => 'Password salah.']);
             }
         } else {
-            // ❌ USER NOT FOUND
-            recordFailedLogin($pdo, $clientIP); // Catat kegagalan ke DB
+            // ❌ User Tidak Ditemukan
+            recordFailedLogin($pdo, $clientIP); // Catat ke DB
             
             $logger->log(0, $username, 'LOGIN_FAILED', "User not found", ['role' => $role_request]);
             echo json_encode(['success' => false, 'message' => 'User tidak ditemukan.']);
         }
         
     } catch (\PDOException $e) {
-        error_log("DB Error: " . $e->getMessage());
+        error_log("Login DB Error: " . $e->getMessage());
         http_response_code(500);
         exit(json_encode(['success' => false, 'message' => 'Server Error.']));
     }
@@ -189,7 +198,14 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
     if ($action === 'check_session') {
         if (isset($_SESSION['user'])) {
-            echo json_encode(['logged_in' => true, 'user' => $_SESSION['user']]);
+            // Update last activity
+            $_SESSION['last_activity'] = time();
+            
+            echo json_encode([
+                'logged_in' => true, 
+                'user' => $_SESSION['user'],
+                'csrf_token' => $_SESSION['csrf_token'] ?? null // Kirim token ke frontend
+            ]);
         } else {
             echo json_encode(['logged_in' => false, 'user' => null]);
         }
