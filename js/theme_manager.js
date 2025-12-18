@@ -1,20 +1,20 @@
 /**
  * =========================================================
- * THEME MANAGER v3.0 - CLEAN CSS VARIABLES
+ * THEME MANAGER v2.0 - Complete Implementation
  * File: js/theme_manager.js
  * 
- * ✅ NO !important
- * ✅ Pure CSS Variables
- * ✅ Better Performance
- * ✅ Easier Debugging
- * ✅ Production Ready
+ * Features:
+ * - Dynamic role-based color injection
+ * - CSS variable management
+ * - Component styling automation
+ * - No hardcoded colors in HTML/JS
  * =========================================================
  */
 
 (function(window) {
     'use strict';
     
-    console.log('🎨 [ThemeManager v3.0] Clean CSS Variables System');
+    console.log('🎨 [ThemeManager v2.0] Loading...');
     
     // ========================================
     // ROLE COLOR PALETTES
@@ -39,36 +39,37 @@
             shadow: 'rgba(217, 164, 65, 0.25)'
         },
         supervisor: {
-            primary: '#f0660a',
-            primaryRGB: '240, 102, 10',
-            primaryDark: '#3E2723',
-            primaryLight: '#ff8534',
-            primaryPale: '#fff3e0',
-            gradient: 'linear-gradient(135deg, #f0660a 0%, #3E2723 100%)',
-            shadow: 'rgba(240, 102, 10, 0.25)'
+            primary: '#6CA78C',
+            primaryRGB: '108, 167, 140',
+            primaryDark: '#5a8f75',
+            primaryLight: '#88bba4',
+            primaryPale: '#eef6f3',
+            gradient: 'linear-gradient(135deg, #6CA78C 0%, #5a8f75 100%)',
+            shadow: 'rgba(108, 167, 140, 0.25)'
         },
         staff: {
-            primary: '#f8c61e',
-            primaryRGB: '248, 198, 30',
-            primaryDark: '#252c37',
-            primaryLight: '#ffd84d',
-            primaryPale: '#fffbea',
-            gradient: 'linear-gradient(135deg, #f8c61e 0%, #252c37 100%)',
-            shadow: 'rgba(248, 198, 30, 0.25)'
+            primary: '#5E81AC',
+            primaryRGB: '94, 129, 172',
+            primaryDark: '#4c6a8f',
+            primaryLight: '#7a9ac0',
+            primaryPale: '#edf2f7',
+            gradient: 'linear-gradient(135deg, #5E81AC 0%, #4c6a8f 100%)',
+            shadow: 'rgba(94, 129, 172, 0.25)'
         }
     };
     
     // ========================================
-    // THEME MANAGER CLASS
+    // THEME MANAGER
     // ========================================
     class ThemeManager {
         constructor() {
             this.currentRole = null;
             this.currentTheme = null;
+            this.styleElement = null;
         }
         
         /**
-         * Apply theme by updating CSS variables only
+         * Apply theme for specific role
          */
         applyTheme(role) {
             if (!role || !ROLE_THEMES[role]) {
@@ -79,28 +80,27 @@
             this.currentRole = role;
             this.currentTheme = ROLE_THEMES[role];
             
-            console.log(`🎨 [ThemeManager v3.0] Applying ${role} theme`);
-            console.log('   Colors:', {
-                primary: this.currentTheme.primary,
-                dark: this.currentTheme.primaryDark,
-                gradient: this.currentTheme.gradient
-            });
+            console.log(`🎨 [ThemeManager] Applying ${role} theme`, this.currentTheme);
             
-            // Only update CSS variables - no inline styles injection
+            // Update CSS Variables
             this.updateCSSVariables();
+            
+            // Inject Dynamic Styles
+            this.injectDynamicStyles();
+            
+            // Update Body Class
             this.updateBodyClass();
             
-            console.log('✅ [ThemeManager] Theme applied via CSS Variables');
+            console.log('✅ [ThemeManager] Theme applied successfully');
         }
         
         /**
-         * Update CSS custom properties (variables)
+         * Update CSS custom properties
          */
         updateCSSVariables() {
             const root = document.documentElement;
             const theme = this.currentTheme;
             
-            // Set all theme variables
             root.style.setProperty('--current-role-color', theme.primary);
             root.style.setProperty('--current-role-rgb', theme.primaryRGB);
             root.style.setProperty('--current-role-dark', theme.primaryDark);
@@ -108,11 +108,89 @@
             root.style.setProperty('--current-role-pale', theme.primaryPale);
             root.style.setProperty('--current-role-gradient', theme.gradient);
             root.style.setProperty('--current-role-shadow', theme.shadow);
+        }
+        
+        /**
+         * Inject dynamic CSS rules
+         */
+        injectDynamicStyles() {
+            // Remove existing
+            if (this.styleElement) {
+                this.styleElement.remove();
+            }
             
-            console.log('✅ CSS Variables updated:', {
-                '--current-role-color': theme.primary,
-                '--current-role-gradient': theme.gradient
-            });
+            this.styleElement = document.createElement('style');
+            this.styleElement.id = 'dynamic-role-theme';
+            
+            const theme = this.currentTheme;
+            
+            const css = `
+                /* ===================================
+                   DYNAMIC ROLE THEME - ${this.currentRole.toUpperCase()}
+                   =================================== */
+                
+                /* Primary Buttons */
+                .btn.primary {
+                    background: ${theme.gradient} !important;
+                    border-color: ${theme.primary} !important;
+                    box-shadow: 0 2px 4px ${theme.shadow} !important;
+                }
+                
+                .btn.primary:hover {
+                    background: ${theme.primaryDark} !important;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 8px ${theme.shadow} !important;
+                }
+                
+                /* Modal Buttons */
+                .modal-actions .btn.primary,
+                #modalConfirm {
+                    background: ${theme.gradient} !important;
+                }
+                
+                /* Links & Active States */
+                a:hover,
+                .nav-item.active {
+                    color: ${theme.primary} !important;
+                    border-left-color: ${theme.primary} !important;
+                }
+                
+                /* Form Focus States */
+                input:focus,
+                textarea:focus,
+                select:focus {
+                    border-color: ${theme.primary} !important;
+                    box-shadow: 0 0 0 3px ${theme.primaryPale} !important;
+                }
+                
+                /* Table Row Hover */
+                .table tbody tr:hover {
+                    background: ${theme.primaryPale} !important;
+                }
+                
+                /* Selection Highlight */
+                ::selection {
+                    background: ${theme.primaryLight} !important;
+                    color: white !important;
+                }
+                
+                /* Loading Spinner */
+                .loading-spinner {
+                    border-left-color: ${theme.primary} !important;
+                }
+                
+                /* Scrollbar (Webkit) */
+                ::-webkit-scrollbar-thumb {
+                    background: ${theme.primaryLight} !important;
+                }
+                
+                ::-webkit-scrollbar-thumb:hover {
+                    background: ${theme.primary} !important;
+                }
+            `;
+            
+            this.styleElement.textContent = css;
+            document.head.appendChild(this.styleElement);
         }
         
         /**
@@ -121,18 +199,17 @@
         updateBodyClass() {
             document.body.classList.remove('role-admin', 'role-owner', 'role-supervisor', 'role-staff');
             document.body.classList.add(`role-${this.currentRole}`);
-            console.log(`✅ Body class: role-${this.currentRole}`);
         }
         
         /**
-         * Get current theme object
+         * Get current theme
          */
         getTheme() {
             return this.currentTheme;
         }
         
         /**
-         * Get specific color value
+         * Get specific color
          */
         getColor(colorKey) {
             return this.currentTheme ? this.currentTheme[colorKey] : null;
@@ -147,10 +224,6 @@
     window.ThemeManager = themeManager;
     window.ROLE_THEMES = ROLE_THEMES;
     
-    console.log('✅ [ThemeManager v3.0] Module loaded - Clean CSS Variables');
-    console.log('📋 Available themes:', Object.keys(ROLE_THEMES));
-    console.log('🎨 Updated themes:');
-    console.log('   - Supervisor: Orange #f0660a + Brown #3E2723');
-    console.log('   - Staff: Golden #f8c61e + Navy #252c37');
+    console.log('✅ [ThemeManager v2.0] Module loaded');
     
 })(window);

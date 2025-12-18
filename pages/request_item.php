@@ -3,7 +3,7 @@ FILE: pages/request_item.php - CLEAN VERSION (NO INLINE SCRIPT)
 ============================================================================ -->
 
 <div class="card">
-    <h2>🔗 Request Klien/Supplier Baru</h2>
+    <h2> Request Klien/Supplier Baru</h2>
     <p class="small">Jika Klien/PT pemilik barang belum terdaftar di sistem, ajukan pendaftarannya di sini.</p>
 </div>
 
@@ -14,14 +14,6 @@ FILE: pages/request_item.php - CLEAN VERSION (NO INLINE SCRIPT)
         <button class="btn btn-sm" style="background:#dc2626;" onclick="closeDebugPanel()">Close</button>
     </div>
     <div id="debugLog" style="background:#0f172a; padding:10px; border-radius:4px; max-height:400px; overflow:auto; font-family:monospace; font-size:0.85rem;"></div>
-</div>
-
-<!-- CONNECTION TEST -->
-<div class="card" style="background:#dbeafe; border-color:#3b82f6;">
-    <h4 style="margin-top:0; color:#1e40af;">🔗 Test Koneksi</h4>
-    <button class="btn primary btn-sm" onclick="testAPIConnection()">🔍 Test Connection</button>
-    <button class="btn btn-sm" onclick="openDebugPanel()">📋 Show Debug Log</button>
-    <div id="testResult" style="margin-top:10px;"></div>
 </div>
 
 <!-- FORM -->
@@ -41,7 +33,7 @@ FILE: pages/request_item.php - CLEAN VERSION (NO INLINE SCRIPT)
         <textarea id="supplierAddress" rows="3" placeholder="Opsional"></textarea>
         
         <button type="submit" class="btn primary" id="submitBtn" style="width:100%; margin-top:20px;">
-            📤 Kirim Request
+             Kirim Request
         </button>
     </form>
 </div>
@@ -50,7 +42,7 @@ FILE: pages/request_item.php - CLEAN VERSION (NO INLINE SCRIPT)
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3>Riwayat Request Saya</h3>
-        <button class="btn btn-sm" onclick="refreshHistory()">🔄 Refresh</button>
+        <button class="btn btn-sm" onclick="refreshHistory()">Refresh</button>
     </div>
     <div id="historyContainer">
         <p>Memuat riwayat...</p>

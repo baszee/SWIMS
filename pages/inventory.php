@@ -60,15 +60,5 @@
     </div>
 </div>
 
-<!-- Info Panel -->
-<div class="card" style="background:#f0f9ff; border-left:4px solid #3b82f6;">
-    <h4 style="margin-top:0; color:#1e40af;">ℹ️ Informasi</h4>
-    <ul class="small" style="margin:0; padding-left:20px; color:#1e3a8a;">
-        <li>Inventaris menampilkan <strong>semua barang yang sudah approved</strong></li>
-        <li>Filter berdasarkan <strong>Supplier/Client</strong> untuk melihat barang spesifik</li>
-        <li>Gunakan fitur <strong>Search</strong> untuk mencari barang dengan cepat</li>
-        <li>Data stok <strong>real-time</strong> diupdate setiap transaksi approved</li>
-    </ul>
-</div>
 
 <!-- Logic ada di js/inventory.js -->

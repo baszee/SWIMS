@@ -45,18 +45,9 @@
     <textarea id="bk_note" rows="3" placeholder="Opsional: alasan pengambilan barang..."></textarea>
     
     <button class="btn primary" type="submit" id="submitBtn">Request Barang Keluar</button>
-    <button class="btn btn-sm" type="button" onclick="showDebugInfo()" style="margin-left:10px;">🔍 Show Debug Info</button>
+   
   </form>
   
-  <div class="card" style="margin-top:16px;background:#dbeafe;border-color:#3b82f6;">
-    <h4 style="margin-top:0;"> Catatan</h4>
-    <p class="small" style="color:#1e3a8a;margin:0;">
-        • Transaksi keluar disimpan sebagai <strong>PENDING</strong> sampai Supervisor approve<br>
-        • Stok akan dikurangi <strong>saat approved</strong><br>
-        • Pastikan jumlah tidak melebihi stok tersedia<br>
-        • Filter Supplier untuk mempermudah pencarian item
-    </p>
-  </div>
 </div>
 
 <!-- Riwayat Transaksi Saya -->
@@ -68,26 +59,26 @@
 </div>
 
 <script>
-    // ========================================
-    // DEBUG FUNCTION
-    // ========================================
-    function showDebugInfo() {
-        const debugInfo = {
-            timestamp: new Date().toISOString(),
-            masterDataCache: {
-                suppliers: masterDataCache.suppliers.length,
-                items: masterDataCache.items.length,
-                itemsSample: masterDataCache.items.slice(0, 3)
-            },
-            currentFilteredItems: currentFilteredItems.length,
-            selectedItemData: selectedItemData
-        };
+        // ========================================
+        // DEBUG FUNCTION
+        // ========================================
+        function showDebugInfo() {
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                masterDataCache: {
+                    suppliers: masterDataCache.suppliers.length,
+                    items: masterDataCache.items.length,
+                    itemsSample: masterDataCache.items.slice(0, 3)
+                },
+                currentFilteredItems: currentFilteredItems.length,
+                selectedItemData: selectedItemData
+            };
+            
+            document.getElementById('debugContent').textContent = JSON.stringify(debugInfo, null, 2);
+            document.getElementById('debugInfo').style.display = 'block';
+            console.log('🔍 DEBUG INFO:', debugInfo);
+        }
         
-        document.getElementById('debugContent').textContent = JSON.stringify(debugInfo, null, 2);
-        document.getElementById('debugInfo').style.display = 'block';
-        console.log('🔍 DEBUG INFO:', debugInfo);
-    }
-    
     // ========================================
     // STATE & CACHED DATA
     // ========================================

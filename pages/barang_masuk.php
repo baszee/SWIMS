@@ -47,16 +47,6 @@
     <button class="btn success" type="submit">Request Barang Masuk</button>
   </form>
   
-  <div class="card" style="margin-top:16px;background:#fef3c7;border-color:#fbbf24;">
-    <h4 style="margin-top:0;"> Cara Kerja</h4>
-    <p class="small" style="color:#78350f;margin:0;">
-        <strong>1.</strong> Pilih Klien/Supplier dahulu<br>
-        <strong>2.</strong> Ketik SKU atau Nama Barang:<br>
-        &nbsp;&nbsp;&nbsp;• Jika sudah terdaftar → pilih dari dropdown<br>
-        &nbsp;&nbsp;&nbsp;• Jika belum ada → input manual SKU + Nama + Unit<br>
-        <strong>3.</strong> Item baru akan status PENDING sampai Supervisor approve
-    </p>
-  </div>
 </div>
 
 <!-- Riwayat Transaksi Saya -->
