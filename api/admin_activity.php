@@ -1,15 +1,15 @@
 <?php
 /**
  * =========================================================
- * FILE: api/admin_activity.php
+ * FILE: api/admin_activity.php - SECURE VERSION
  * Purpose: API for viewing and searching activity logs
  * Access: Admin only
  * =========================================================
  */
 
-session_start();
 include('../config/db_config.php');
 include('../utils/ActivityLogger.php');
+include('../utils/SessionManager.php'); // Security Helper
 
 header('Content-Type: application/json');
 
@@ -19,54 +19,41 @@ function api_response($success, $message, $data = null, $http_code = 200) {
     exit();
 }
 
-// ========================================
-// SECURITY CHECK
-// ========================================
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    api_response(false, "Access denied. Admin only.", null, 403);
-}
+// 1. Wajib Login & Cek Timeout
+SessionManager::requireAuth();
 
-$admin_id = $_SESSION['user']['id'];
-$admin_username = $_SESSION['user']['username'];
+// 2. Role Check (Hanya Admin)
+SessionManager::requireRole('admin');
 
-// ========================================
-// INITIALIZE LOGGER
-// ========================================
+$user = SessionManager::getUser();
+$admin_id = $user['id'];
+$admin_username = $user['username'];
+
+// Initialize Logger
 $logger = new ActivityLogger($pdo);
 
-// ========================================
 // REQUEST HANDLER
-// ========================================
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     switch ($method) {
         
-        // ====================================================================
-        // GET: Retrieve logs with optional filters
-        // ====================================================================
+        // GET: Retrieve logs
         case 'GET':
             $action = $_GET['action'] ?? 'recent';
             
             if ($action === 'recent') {
-                // Get recent logs (default: last 50)
                 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
                 $user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
-                
                 $logs = $logger->getRecentLogs($limit, $user_id);
-                
                 api_response(true, "Recent activity logs retrieved.", $logs);
                 
             } elseif ($action === 'stats') {
-                // Get activity statistics
                 $period = $_GET['period'] ?? 'today';
-                
                 $stats = $logger->getStats($period);
-                
                 api_response(true, "Activity statistics retrieved.", $stats);
                 
             } elseif ($action === 'search') {
-                // Search logs with filters
                 $filters = [
                     'user_id' => $_GET['user_id'] ?? null,
                     'action' => $_GET['action_type'] ?? null,
@@ -81,14 +68,11 @@ try {
                 });
                 
                 $logs = $logger->search($filters);
-                
                 api_response(true, "Search completed.", $logs);
                 
             } elseif ($action === 'users') {
-                // Get list of users for filter dropdown
                 $stmt = $pdo->query("SELECT id, username, role FROM users ORDER BY username");
                 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
                 api_response(true, "User list retrieved.", $users);
                 
             } else {
@@ -96,12 +80,9 @@ try {
             }
             break;
         
-        // ====================================================================
         // POST: Manual log entry (if needed)
-        // ====================================================================
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
-            
             $action = $data['action'] ?? '';
             $description = $data['description'] ?? '';
             $metadata = $data['metadata'] ?? null;
@@ -125,15 +106,11 @@ try {
             }
             break;
         
-        // ====================================================================
         // DELETE: Clean old logs
-        // ====================================================================
         case 'DELETE':
             $days = isset($_GET['days']) ? (int)$_GET['days'] : 90;
-            
             $deleted = $logger->cleanOldLogs($days);
             
-            // Log this cleanup action
             $logger->log(
                 $admin_id,
                 $admin_username,

@@ -1,15 +1,15 @@
 <?php
 /**
  * =========================================================
- * FILE: api/admin_user.php - FIXED v2.1
- * Fix: Password validation now ACTIVE
+ * FILE: api/admin_user.php - SECURE VERSION
+ * Fitur: Manajemen User + Password Validation + Logging
  * =========================================================
  */
 
-session_start();
 include('../config/db_config.php');
 include('../utils/ActivityLogger.php');
-include('../utils/PasswordValidator.php'); // ✅ FIXED: Include validator
+include('../utils/PasswordValidator.php'); 
+include('../utils/SessionManager.php'); // Security Helper
 
 header('Content-Type: application/json');
 
@@ -19,30 +19,26 @@ function api_response($success, $message, $data = null, $http_code = 200) {
     exit();
 }
 
-// ========================================
-// SECURITY CHECK
-// ========================================
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    api_response(false, "Akses ditolak. Hanya Administrator yang diizinkan.", null, 403);
-}
+// 1. Wajib Login & Cek Timeout
+SessionManager::requireAuth();
 
-$admin_id = $_SESSION['user']['id'];
-$admin_username = $_SESSION['user']['username'];
+// 2. Role Check (Hanya Admin)
+SessionManager::requireRole('admin');
+
+$user = SessionManager::getUser();
+$admin_id = $user['id'];
+$admin_username = $user['username'];
 
 // Initialize logger
 $logger = new ActivityLogger($pdo);
 
-// ========================================
 // REQUEST HANDLER
-// ========================================
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     switch ($method) {
         
-        // ====================================================================
         // GET: Retrieve user list
-        // ====================================================================
         case 'GET':
             $stmt = $pdo->query("SELECT id, username, role, is_active, created_at FROM users ORDER BY created_at DESC");
             $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -58,9 +54,7 @@ try {
             api_response(true, "Daftar pengguna berhasil diambil.", $users);
             break;
         
-        // ====================================================================
         // POST: Create new user
-        // ====================================================================
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
             $username = trim($data['username'] ?? '');
@@ -71,7 +65,7 @@ try {
                 api_response(false, "Username dan Role wajib diisi.", null, 400);
             }
             
-            // ✅ FIXED: Validate password strength
+            // Validate password strength
             $validation = PasswordValidator::validate($password);
             if (!$validation['valid']) {
                 api_response(false, $validation['message'], [
@@ -80,7 +74,6 @@ try {
                 ], 400);
             }
             
-            // Hash password
             $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
             // Check duplicate username
@@ -95,7 +88,6 @@ try {
             $stmt->execute([$username, $hashed_password, $role]);
             $new_user_id = $pdo->lastInsertId();
             
-            // Log create action
             $logger->log(
                 $admin_id,
                 $admin_username,
@@ -112,9 +104,7 @@ try {
             api_response(true, "User '{$username}' dengan role {$role} berhasil ditambahkan.", ['id' => $new_user_id], 201);
             break;
             
-        // ====================================================================
         // PUT/PATCH: Update user
-        // ====================================================================
         case 'PUT':
         case 'PATCH':
             $data = json_decode(file_get_contents("php://input"), true);
@@ -139,7 +129,7 @@ try {
             $sql = "UPDATE users SET role = ?, is_active = ?";
             $params = [$role, $is_active];
 
-            // ✅ FIXED: Validate password if changing
+            // Validate password if changing
             if (!empty($new_password)) {
                 $validation = PasswordValidator::validate($new_password);
                 if (!$validation['valid']) {
@@ -181,9 +171,7 @@ try {
             api_response(true, "Data User ID:{$id} berhasil diupdate.", null);
             break;
 
-        // ====================================================================
         // DELETE: Deactivate OR Hard Delete user
-        // ====================================================================
         case 'DELETE':
             $id = $_GET['id'] ?? null;
             $permanent = isset($_GET['permanent']) && $_GET['permanent'] === 'true';
@@ -215,7 +203,7 @@ try {
                 $admin_count = $stmt_count->fetchColumn();
                 
                 if ($admin_count <= 1) {
-                    api_response(false, "Tidak dapat menghapus admin terakhir. Minimal 1 admin harus ada.", null, 403);
+                    api_response(false, "Tidak dapat menghapus admin terakhir.", null, 403);
                 }
             }
             
@@ -225,33 +213,19 @@ try {
                     $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
                     $result = $stmt->execute([$id]);
                     
-                    if (!$result) {
-                        $errorInfo = $stmt->errorInfo();
-                        error_log("Delete user error: " . json_encode($errorInfo));
-                        api_response(false, "Gagal menghapus user: " . $errorInfo[2], null, 500);
-                    }
-                    
                     $logger->log(
                         $admin_id,
                         $admin_username,
                         'DELETE',
                         "Permanently deleted user: {$target_username} (role: {$target_role})",
-                        [
-                            'deleted_user_id' => $id,
-                            'deleted_username' => $target_username,
-                            'deleted_role' => $target_role,
-                            'permanent' => true
-                        ]
+                        ['deleted_user_id' => $id, 'permanent' => true]
                     );
                     
-                    api_response(true, "User '{$target_username}' berhasil dihapus secara permanen dari database.", null);
+                    api_response(true, "User '{$target_username}' berhasil dihapus secara permanen.", null);
                     
                 } catch (PDOException $e) {
-                    error_log("Delete user PDO error: " . $e->getMessage());
-                    
-                    if (strpos($e->getMessage(), 'foreign key constraint') !== false || 
-                        strpos($e->getMessage(), 'Cannot delete') !== false) {
-                        api_response(false, "User tidak dapat dihapus karena masih memiliki data terkait di sistem (transaksi, item, dll). Gunakan Edit > Non-aktifkan untuk menonaktifkan user.", null, 409);
+                    if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
+                        api_response(false, "User tidak dapat dihapus karena masih memiliki data terkait. Gunakan Non-aktifkan saja.", null, 409);
                     } else {
                         api_response(false, "Database error: " . $e->getMessage(), null, 500);
                     }
@@ -267,7 +241,7 @@ try {
                     $admin_username,
                     'DEACTIVATE',
                     "Deactivated user: {$target_username}",
-                    ['target_user_id' => $id, 'target_username' => $target_username]
+                    ['target_user_id' => $id]
                 );
                 
                 api_response(true, "User '{$target_username}' berhasil di-nonaktifkan.", null);
@@ -280,11 +254,9 @@ try {
 
 } catch (\PDOException $e) {
     error_log("Database Error in admin_user.php: " . $e->getMessage());
-    error_log("Stack trace: " . $e->getTraceAsString());
     api_response(false, "Kesalahan database: " . $e->getMessage(), null, 500);
 } catch (\Exception $e) {
     error_log("General Error in admin_user.php: " . $e->getMessage());
-    error_log("Stack trace: " . $e->getTraceAsString());
     api_response(false, "Kesalahan server: " . $e->getMessage(), null, 500);
 }
 ?>

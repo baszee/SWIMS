@@ -1,9 +1,10 @@
 <?php
 // FILE: api/items.php
 // Fungsi: API CRUD untuk Data Master Barang/Item dan Stok
-// Version: 2.4 - STRICT FILTER: Only approved items in 'available' endpoint
-session_start();
+// Version: 3.0 - SECURE (Using SessionManager for Timeout & RBAC)
+
 include('../config/db_config.php'); 
+include('../utils/SessionManager.php'); // Panggil helper keamanan
 
 header('Content-Type: application/json');
 
@@ -14,20 +15,19 @@ function api_response($success, $message, $data = null, $http_code = 200) {
 }
 
 // ----------------------------------------------------------------------
-// KEAMANAN: Memeriksa Session dan Otorisasi
+// KEAMANAN: Memeriksa Session, Timeout, dan Role via SessionManager
 // ----------------------------------------------------------------------
 
-if (!isset($_SESSION['user'])) {
-    api_response(false, "Akses ditolak. Silakan login.", null, 401);
-}
+// 1. Wajib Login & Cek Timeout
+SessionManager::requireAuth();
 
-$user_role = $_SESSION['user']['role'];
-$user_id = $_SESSION['user']['id'];
-$allowed_roles = ['admin', 'staff', 'supervisor', 'owner'];
+// 2. Wajib Punya Role Tertentu (Semua user boleh lihat, tapi write terbatas)
+SessionManager::requireRole(['admin', 'staff', 'supervisor', 'owner']);
 
-if (!in_array($user_role, $allowed_roles)) {
-    api_response(false, "Otorisasi ditolak.", null, 403);
-}
+// Ambil data user dari SessionManager
+$user = SessionManager::getUser();
+$user_role = $user['role'];
+$user_id = $user['id'];
 
 // ----------------------------------------------------------------------
 // PENANGANAN REQUEST
@@ -43,7 +43,7 @@ try {
             $action = $_GET['action'] ?? 'list';
             
             // =====================================================================
-            // ENDPOINT: SEARCH ITEM (action=search) - Digunakan oleh Barang Masuk (Autocomplete)
+            // ENDPOINT: SEARCH ITEM (action=search)
             // =====================================================================
             if ($action === 'search') {
                 $supplier_id = $_GET['supplier_id'] ?? null;
@@ -55,17 +55,10 @@ try {
                 
                 // Query hanya mengambil item yang APPROVED dan sesuai Supplier
                 $sql = "
-                    SELECT 
-                        i.id, 
-                        i.sku, 
-                        i.name, 
-                        i.unit, 
-                        i.current_stock,
-                        s.name as supplier_name
+                    SELECT i.id, i.sku, i.name, i.unit, i.current_stock, s.name as supplier_name
                     FROM items i 
                     JOIN suppliers s ON i.supplier_id = s.id 
-                    WHERE i.supplier_id = ? 
-                      AND i.is_approved = TRUE
+                    WHERE i.supplier_id = ? AND i.is_approved = TRUE
                 ";
                 
                 $params = [$supplier_id];
@@ -88,30 +81,11 @@ try {
             
             // =====================================================================
             // ENDPOINT: AVAILABLE ITEMS (action=available) - STRICT APPROVED ONLY
-            // Digunakan oleh:
-            // 1. Barang Keluar (dropdown item)
-            // 2. Inventaris Stok (daftar lengkap)
-            // 
-            // ✅ HANYA menampilkan item yang is_approved = TRUE
-            // ❌ TIDAK menampilkan item PENDING atau REJECTED
             // =====================================================================
             elseif ($action === 'available') {
-                error_log("=== ITEMS API: AVAILABLE ENDPOINT ===");
-                error_log("User role: " . $user_role);
-                error_log("User ID: " . $user_id);
-                
                 $sql = "
-                    SELECT 
-                        i.id, 
-                        i.sku, 
-                        i.name, 
-                        i.unit, 
-                        i.current_stock, 
-                        i.supplier_id,
-                        i.min_stock,
-                        i.is_approved,
-                        s.name as supplier_name,
-                        i.created_at
+                    SELECT i.id, i.sku, i.name, i.unit, i.current_stock, i.supplier_id,
+                           i.min_stock, i.is_approved, s.name as supplier_name, i.created_at
                     FROM items i 
                     JOIN suppliers s ON i.supplier_id = s.id 
                     WHERE i.is_approved = TRUE
@@ -121,34 +95,11 @@ try {
                 $stmt = $pdo->query($sql);
                 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-                error_log("✅ Items retrieved: " . count($items));
-                
-                // Debug: Log semua item dengan status approved
-                foreach ($items as $item) {
-                    error_log("  → Item ID: {$item['id']} | SKU: {$item['sku']} | Name: {$item['name']} | Approved: {$item['is_approved']} | Stock: {$item['current_stock']}");
-                }
-                
-                // ✅ VALIDASI: Pastikan semua item benar-benar approved
-                $all_approved = true;
-                foreach ($items as $item) {
-                    if ($item['is_approved'] != 1) {
-                        $all_approved = false;
-                        error_log("⚠️ WARNING: Non-approved item found! ID: {$item['id']}");
-                    }
-                }
-                
-                if ($all_approved) {
-                    error_log("✅ VALIDATION PASSED: All items are approved");
-                } else {
-                    error_log("❌ VALIDATION FAILED: Some items are not approved!");
-                }
-    
                 api_response(true, "Daftar item approved berhasil diambil.", $items);
             }
             
             // =====================================================================
-            // ENDPOINT: LIST ALL (Default - Untuk manajemen Admin)
-            // Menampilkan SEMUA item termasuk PENDING dan REJECTED
+            // ENDPOINT: LIST ALL (Default)
             // =====================================================================
             else {
                 $stmt = $pdo->query("
@@ -181,7 +132,7 @@ try {
             $stmt_check = $pdo->prepare("SELECT COUNT(*) FROM items WHERE sku = ?");
             $stmt_check->execute([$sku]);
             if ($stmt_check->fetchColumn() > 0) {
-                api_response(false, "SKU '{$sku}' sudah terdaftar. Gunakan SKU yang berbeda.", null, 409);
+                api_response(false, "SKU '{$sku}' sudah terdaftar.", null, 409);
             }
             
             // Logika Persetujuan: Admin langsung APPROVED, Staff PENDING
@@ -199,6 +150,7 @@ try {
         // UPDATE: Mengubah data Item
         case 'PUT':
         case 'PATCH':
+            // RBAC Check: Hanya Admin & Supervisor yang boleh edit
             if ($user_role !== 'admin' && $user_role !== 'supervisor') {
                 api_response(false, "Anda tidak memiliki hak untuk mengubah data item.", null, 403);
             }
@@ -217,6 +169,7 @@ try {
             $params = [$name, $min_stock];
             
             if ($is_approved !== null) {
+                // RBAC Check: Hanya Admin & Supervisor yang boleh approve
                 if ($user_role !== 'admin' && $user_role !== 'supervisor') {
                     api_response(false, "Anda tidak memiliki hak untuk mengubah status approval.", null, 403);
                 }
@@ -235,7 +188,7 @@ try {
 
         // DELETE: Item tidak dihapus
         case 'DELETE':
-            api_response(false, "Penghapusan item tidak diizinkan. Gunakan fungsi manajemen untuk disable item.", null, 405);
+            api_response(false, "Penghapusan item tidak diizinkan.", null, 405);
             break;
 
         default:
