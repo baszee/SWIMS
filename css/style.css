@@ -1,36 +1,38 @@
 /* ============================================================================
-   SWIMS COMPLETE CSS v3.2 - Role-Based Dynamic Theming
-   Original: 700+ lines | Enhanced: Full featured with dynamic colors
+   SWIMS COMPLETE CSS v4.0 - CSS VARIABLES BASED THEMING
+   ✅ NO !important
+   ✅ Dynamic theme via CSS Variables
+   ✅ Clean & Maintainable
    ============================================================================ */
 
 /* ========================================
-   CSS VARIABLES - Role Colors
+   CSS VARIABLES - Base + Dynamic
    ======================================== */
 :root {
-  /* Role Colors (soft warm palette) */
-  --role-admin: #E07A5F;      /* Clay Red */
-  --role-owner: #D9A441;      /* Golden Amber */
-  --role-supervisor: #6CA78C; /* Sage Green */
-  --role-staff: #5E81AC;      /* Dusty Blue */
+  /* Role Colors (static - for reference only) */
+  --role-admin: #E07A5F;
+  --role-owner: #D9A441;
+  --role-supervisor: #f0660a;
+  --role-staff: #f8c61e;
 
   /* Base Colors */
-  --bg-main: #F6F1EB;         /* Warm Linen */
-  --bg-card: #FFFFFF;         /* Clean White */
-  --text-main: #2F343F;       /* Charcoal */
-  --text-muted: #7B818A;      /* Soft Slate */
+  --bg-main: #F6F1EB;
+  --bg-card: #FFFFFF;
+  --text-main: #2F343F;
+  --text-muted: #7B818A;
 
   /* Status Colors */
-  --success: #3B9E6B;         /* Fresh Green */
-  --danger: #D05F5F;          /* Muted Coral */
-  --warning: #E2AD4C;         /* Honey Gold */
+  --success: #3B9E6B;
+  --danger: #D05F5F;
+  --warning: #E2AD4C;
 
   /* Sidebar */
   --sidebar-width: 260px;
-  --sidebar-bg: #2E3442;      /* Warm Charcoal */
+  --sidebar-bg: #2E3442;
   --sidebar-text: #EAEFF7;
   --sidebar-hover: rgba(234,239,247,0.12);
 
-  /* Dynamic Role Color (will be set by JS) */
+  /* 🔥 DYNAMIC VARIABLES - Will be updated by ThemeManager */
   --current-role-color: var(--role-admin);
   --current-role-rgb: 224, 122, 95;
   --current-role-dark: #c86650;
@@ -38,29 +40,6 @@
   --current-role-pale: #fceae6;
   --current-role-gradient: linear-gradient(135deg, #E07A5F 0%, #c86650 100%);
   --current-role-shadow: rgba(224, 122, 95, 0.25);
-}
-
-/* ========================================
-   LOGIN PAGE DYNAMIC CARD STYLES
-   ======================================== */
-.card.login-admin {
-  border: 2px solid var(--role-admin);
-  box-shadow: 0 0 15px rgba(224, 122, 95, 0.38);
-}
-
-.card.login-owner {
-  border: 2px solid var(--role-owner);
-  box-shadow: 0 0 15px rgba(217, 164, 65, 0.32);
-}
-
-.card.login-supervisor {
-  border: 2px solid var(--role-supervisor);
-  box-shadow: 0 0 15px rgba(108, 167, 140, 0.32);
-}
-
-.card.login-staff {
-  border: 2px solid var(--role-staff);
-  box-shadow: 0 0 15px rgba(94, 129, 172, 0.32);
 }
 
 /* ========================================
@@ -88,7 +67,7 @@ body {
 }
 
 /* ========================================
-   SIDEBAR
+   SIDEBAR - USE CSS VARIABLES
    ======================================== */
 .sidebar {
   width: var(--sidebar-width);
@@ -105,11 +84,11 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Sidebar Header */
+/* Sidebar Header - USE DYNAMIC GRADIENT */
 .sidebar-header {
   padding: 24px 20px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
-  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.18) 100%);
+  background: var(--current-role-gradient);
 }
 
 .sidebar-header h1 {
@@ -140,6 +119,7 @@ body {
   gap: 12px;
 }
 
+/* User Avatar - USE DYNAMIC COLOR */
 .user-avatar {
   width: 40px;
   height: 40px;
@@ -164,6 +144,7 @@ body {
   margin: 0 0 2px 0;
 }
 
+/* User Role Badge - USE DYNAMIC COLOR */
 .user-role {
   display: inline-block;
   font-size: 0.7rem;
@@ -214,6 +195,7 @@ body {
   border-left-color: var(--current-role-color);
 }
 
+/* Active Navigation - USE DYNAMIC COLOR */
 .nav-item.active {
   background: rgba(255,255,255,0.14);
   border-left-color: var(--current-role-color);
@@ -264,7 +246,6 @@ body {
   min-height: 100vh;
 }
 
-/* Top Header (Breadcrumb/Page Title) */
 .content-header {
   background: var(--bg-card);
   border-bottom: 1px solid #E3E7ED;
@@ -285,7 +266,6 @@ body {
   margin-top: 4px;
 }
 
-/* Content Container */
 .content-body {
   flex: 1;
   padding: 32px;
@@ -352,10 +332,11 @@ input, textarea, select {
   color: var(--text-main);
 }
 
+/* Form Focus - USE DYNAMIC COLORS */
 input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--current-role-color);
-  box-shadow: 0 0 0 3px rgba(var(--current-role-rgb), 0.18);
+  box-shadow: 0 0 0 3px var(--current-role-pale);
 }
 
 textarea {
@@ -364,7 +345,7 @@ textarea {
 }
 
 /* ========================================
-   BUTTONS
+   BUTTONS - USE CSS VARIABLES
    ======================================== */
 .btn {
   padding: 10px 18px;
@@ -384,9 +365,15 @@ textarea {
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
+/* Primary Button - USE DYNAMIC GRADIENT */
 .btn.primary {
-  background: var(--current-role-color);
+  background: var(--current-role-gradient);
   color: white;
+  box-shadow: 0 2px 4px var(--current-role-shadow);
+}
+
+.btn.primary:hover {
+  box-shadow: 0 4px 8px var(--current-role-shadow);
 }
 
 .btn.success {
@@ -438,8 +425,9 @@ textarea {
   transition: background 0.15s ease;
 }
 
+/* Table Row Hover - USE DYNAMIC COLOR */
 .table tbody tr:hover {
-  background: #F7FAFC;
+  background: var(--current-role-pale);
 }
 
 /* ========================================
@@ -480,7 +468,7 @@ textarea {
   color: #B85B74;
 }
 
-/* Role Badge */
+/* Role Badge - USE DYNAMIC COLOR */
 .role-badge {
   padding: 4px 10px;
   border-radius: 6px;
@@ -493,10 +481,10 @@ textarea {
 }
 
 /* ========================================
-   STAT BOXES (original)
+   STAT BOXES - USE CSS VARIABLES
    ======================================== */
 .stat-box {
-  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.14) 100%);
+  background: var(--current-role-gradient);
   padding: 20px;
   border-radius: 10px;
   color: white;
@@ -527,12 +515,111 @@ textarea {
   opacity: 0.95;
   margin-bottom: 8px;
   font-weight: 500;
+  color: white;
 }
 
 .stat-value {
   font-size: 2.2rem;
   font-weight: 700;
   line-height: 1;
+  color: white;
+}
+
+/* ========================================
+   STAT CARDS (Compact Version) - USE CSS VARIABLES
+   ======================================== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--current-role-gradient);
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 6px 18px rgba(18,23,34,0.06);
+  border: 1px solid rgba(14,20,30,0.03);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(18,23,34,0.10);
+}
+
+.stat-card .label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.95);
+  margin-bottom: 6px;
+}
+
+.stat-card .value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: white;
+  line-height: 1;
+}
+
+.stat-card .sub {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.85);
+  margin-top: 6px;
+}
+
+.stat-card.success .value { color: white; }
+.stat-card.warning .value { color: white; }
+.stat-card.danger .value { color: white; }
+
+/* ========================================
+   ADMIN DASHBOARD OVERRIDES
+   ======================================== */
+#adminDashboard {
+  display: block;
+  width: 100%;
+}
+
+#adminDashboard .stat-grid {
+  display: block;
+  grid-template-columns: none;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+#adminDashboard .admin-stat {
+  display: block;
+  background: var(--current-role-gradient);
+  color: white;
+  padding: 22px 18px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  font-weight: 600;
+  text-align: center;
+}
+
+#adminDashboard .admin-stat .label {
+  font-size: 0.95rem;
+  opacity: 0.95;
+  color: rgba(255,255,255,0.95);
+  margin-bottom: 6px;
+}
+
+#adminDashboard .admin-stat .value {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+  margin-top: 6px;
 }
 
 /* ========================================
@@ -635,6 +722,49 @@ hr {
 }
 
 /* ========================================
+   LOADING INDICATOR - USE DYNAMIC COLOR
+   ======================================== */
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0,0,0,0.1);
+  border-left-color: var(--current-role-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   SELECTION & SCROLLBAR - USE DYNAMIC COLORS
+   ======================================== */
+::selection {
+  background: var(--current-role-light);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--current-role-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--current-role-color);
+}
+
+/* ========================================
    RESPONSIVE
    ======================================== */
 @media (max-width: 1024px) {
@@ -678,30 +808,13 @@ hr {
 }
 
 /* ========================================
-   LOADING INDICATOR
-   ======================================== */
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(0,0,0,0.1);
-  border-left-color: var(--current-role-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 20px auto;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ========================================
    PRINT STYLES
    ======================================== */
 @media print {
   .sidebar,
   .sidebar-footer,
   .btn-logout {
-    display: none !important;
+    display: none;
   }
 
   .main-content {
@@ -709,87 +822,9 @@ hr {
   }
 }
 
-/* ============================================================================
-   ADDITIONAL: Compact & Modern Stat Cards
-   ============================================================================ */
-
-/* ---------- Stat grid (compact & responsive) ---------- */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat( auto-fit, minmax(220px, 1fr) );
-  gap: 18px;
-  align-items: stretch;
-  margin-bottom: 20px;
-}
-
-/* ---------- Stat card (compact, center content) ---------- */
-.stat-card {
-  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(0,0,0,0.03));
-  border-radius: 12px;
-  padding: 18px;
-  text-align: center;
-  min-height: 110px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: var(--text-main);
-  box-shadow: 0 6px 18px rgba(18,23,34,0.06);
-  border: 1px solid rgba(14,20,30,0.03);
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-
-/* Accent stripe on top using current role color */
-.stat-card::before {
-  content: "";
-  display: block;
-  height: 6px;
-  width: 100%;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-  margin: -18px -18px 12px -18px;
-  background: linear-gradient(90deg, var(--current-role-color), rgba(0,0,0,0.06));
-}
-
-/* Label + value */
-.stat-card .label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 6px;
-}
-
-.stat-card .value {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--text-main);
-  line-height: 1;
-}
-
-/* Small helper line under value (optional) */
-.stat-card .sub {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-top: 6px;
-}
-
-/* hover */
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 28px rgba(18,23,34,0.10);
-}
-
-/* color variants (optional) */
-.stat-card.success .value { color: var(--success); }
-.stat-card.warning .value { color: var(--warning); }
-.stat-card.danger .value { color: var(--danger); }
-
-/* ensure full-width on small screens is not too tall */
-@media (max-width: 420px) {
-  .stat-card { min-height: 88px; padding: 12px; }
-  .stat-card .value { font-size: 1.6rem; }
-}
-
-/* optional: make welcome block match design */
+/* ========================================
+   PAGE WELCOME BLOCK
+   ======================================== */
 .page-welcome {
   background: var(--bg-card);
   border-radius: 10px;
@@ -798,117 +833,27 @@ hr {
   box-shadow: 0 4px 10px rgba(18,23,34,0.04);
 }
 
-/* Accessibility & minor tweaks */
-[aria-live] {
-  outline: none;
+/* ========================================
+   LOGIN PAGE DYNAMIC STYLES
+   ======================================== */
+.card.login-admin {
+  border: 2px solid var(--role-admin);
+  box-shadow: 0 0 15px rgba(224, 122, 95, 0.38);
 }
 
-/* ============================
-   ADMIN-SPECIFIC OVERRIDES
-   ============================ */
-
-/* Target only admin dashboard container so other roles keep compact cards */
-#adminDashboard {
-  /* keep admin sections full-width and stacked */
-  display: block !important;
-  width: 100%;
+.card.login-owner {
+  border: 2px solid var(--role-owner);
+  box-shadow: 0 0 15px rgba(217, 164, 65, 0.32);
 }
 
-/* Ensure any grid inside admin dashboard becomes stacked block */
-#adminDashboard .stat-grid {
-  display: block !important;
-  grid-template-columns: none !important;
-  gap: 0 !important;
-  margin-bottom: 16px !important;
+.card.login-supervisor {
+  border: 2px solid var(--role-supervisor);
+  box-shadow: 0 0 15px rgba(240, 102, 10, 0.32);
 }
 
-/* Full-width admin stat box — visible colored band using role color */
-#adminDashboard .admin-stat {
-  display: block;
-  background: linear-gradient(135deg, var(--current-role-color) 0%, rgba(0,0,0,0.08) 100%);
-  color: white;
-  padding: 22px 18px;
-  border-radius: 10px;
-  margin-bottom: 14px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-  font-weight: 600;
-  text-align: center;
+.card.login-staff {
+  border: 2px solid var(--role-staff);
+  box-shadow: 0 0 15px rgba(248, 198, 30, 0.32);
 }
 
-/* admin stat label small */
-#adminDashboard .admin-stat .label {
-  font-size: 0.95rem;
-  opacity: 0.95;
-  color: rgba(255,255,255,0.95);
-  margin-bottom: 6px;
-}
-
-/* admin stat value large */
-#adminDashboard .admin-stat .value {
-  font-size: 2.6rem;
-  font-weight: 800;
-  line-height: 1;
-  color: #fff;
-  margin-top: 6px;
-}
-
-/* allow different variants (success/warning/danger) for admin stats */
-#adminDashboard .admin-stat.success {
-  background: linear-gradient(135deg, var(--success) 0%, rgba(0,0,0,0.06) 100%);
-  color: white;
-}
-#adminDashboard .admin-stat.warning {
-  background: linear-gradient(135deg, var(--warning) 0%, rgba(0,0,0,0.06) 100%);
-  color: white;
-}
-#adminDashboard .admin-stat.danger {
-  background: linear-gradient(135deg, var(--danger) 0%, rgba(0,0,0,0.06) 100%);
-  color: white;
-}
-
-/* If JS renders .stat-card inside admin, make them full-width and neutral background */
-#adminDashboard .stat-card {
-  display: block;
-  width: 100%;
-  min-height: auto;
-  padding: 14px 18px;
-  background: var(--bg-card);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border-radius: 10px;
-  border: 1px solid #E2E8F0;
-  margin-bottom: 12px;
-}
-
-/* Restore top stripe for admin stat-card if desired */
-#adminDashboard .stat-card::before {
-  display: block;
-  height: 6px;
-  width: 100%;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
-  margin: -14px -18px 10px -18px;
-  background: linear-gradient(90deg, var(--current-role-color), rgba(0,0,0,0.04));
-}
-
-/* keep admin role-badge colored */
-#adminDashboard .role-badge {
-  background: var(--current-role-color);
-  color: white;
-}
-
-/* Keep admin tables readable */
-#adminDashboard .card table {
-  margin-top: 12px;
-}
-
-/* Small screens: adjust admin stat size */
-@media (max-width: 560px) {
-  #adminDashboard .admin-stat .value {
-    font-size: 1.8rem;
-  }
-  #adminDashboard .admin-stat {
-    padding: 16px 12px;
-  }
-}
-
-/* End of CSS */  
+/* End of CSS */
