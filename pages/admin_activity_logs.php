@@ -88,15 +88,5 @@ All logic moved to js/activity_logs.js
     </div>
 </div>
 
-<!-- Tips -->
-<div class="card" style="background:#f0f9ff; border-left:4px solid #3b82f6;">
-    <h4 style="margin-top:0; color:#1e40af;">💡 Tips Penggunaan</h4>
-    <ul class="small" style="margin:0; padding-left:20px; color:#1e3a8a;">
-        <li><strong>Filter:</strong> Gunakan filter untuk mempersempit hasil pencarian</li>
-        <li><strong>Export:</strong> Download logs dalam format CSV untuk analisis lebih lanjut</li>
-        <li><strong>Clean Old:</strong> Hapus logs lama (>90 hari) untuk menghemat space database</li>
-        <li><strong>Detail:</strong> Klik tombol 👁️ Detail untuk melihat metadata lengkap</li>
-    </ul>
-</div>
 
 <!-- NO INLINE SCRIPT - All logic in js/activity_logs.js -->

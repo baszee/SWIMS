@@ -274,7 +274,6 @@
                 const statusBadge = Number(u.is_active) === 1 ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-danger">Non-aktif</span>';
                 html += `<tr><td>${u.id || '-'}</td><td><b>${u.username || '-'}</b></td><td><span class="role-badge">${u.role || '-'}</span></td><td>${statusBadge}</td><td>${fmtDateShort(u.created_at)}</td></tr>`;
             });
-            html += `</tbody></table></div><div class="card" style="background:#F4F7FB; border-left:4px solid var(--current-role-color);"><h3 style="margin-top:0; color:var(--text-main);">Tips Administrator</h3><ul style="margin:0; padding-left:20px; color:var(--text-main);"><li>User Management: Kelola akun pengguna sistem SWIMS</li><li>View Stock: Monitor stok gudang (read-only)</li><li>Security: Admin tidak dapat mengubah stok secara langsung</li><li>Best Practice: Gunakan password yang kuat dan ganti secara berkala</li></ul></div>`;
             dashboardDiv.innerHTML = html;
         } catch (error) {
             dashboardDiv.innerHTML = `<div class="card"><p class="small" style="color:var(--danger);">Error saat memuat data: ${error.message}</p><button class="btn primary" onclick="loadAdminDashboardSimple()">Coba Lagi</button></div>`;

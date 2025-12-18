@@ -274,22 +274,6 @@ async function init_admin_users() {
                 </tr>
             `;
         });
-
-        tableHtml += `
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="card" style="background:#fef3c7; border-left:4px solid #f59e0b;">
-                <h4 style="margin-top:0; color:#92400e;">Catatan Penting</h4>
-                <ul style="margin:0; padding-left:20px; color:#78350f; font-size:0.9rem;">
-                    <li><strong>Edit:</strong> Ubah role, password, atau status user (aktif/non-aktif)</li>
-                    <li><strong>Delete:</strong> Hapus user dari database secara permanen (tidak bisa dikembalikan)</li>
-                    <li>Anda tidak dapat menghapus akun Anda sendiri</li>
-                    <li>Admin terakhir tidak dapat dihapus (minimal 1 admin harus ada)</li>
-                </ul>
-            </div>
-        `;
         
         listDiv.innerHTML = tableHtml;
 

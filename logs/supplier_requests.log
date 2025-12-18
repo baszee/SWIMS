@@ -907,3 +907,23 @@
 [2025-12-18 14:21:07] User authenticated - ID: 2, Role: staff
 [2025-12-18 14:21:07] GET action: my_requests
 [2025-12-18 14:21:07] Found 4 requests for user 2
+[2025-12-18 14:25:30] GET request from staff1
+[2025-12-18 14:25:30] User authenticated - ID: 2, Role: staff
+[2025-12-18 14:25:30] GET action: my_requests
+[2025-12-18 14:25:30] Found 4 requests for user 2
+[2025-12-18 14:25:37] GET request from staff1
+[2025-12-18 14:25:37] User authenticated - ID: 2, Role: staff
+[2025-12-18 14:25:37] GET action: list
+[2025-12-18 14:28:41] GET request from staff1
+[2025-12-18 14:28:41] User authenticated - ID: 2, Role: staff
+[2025-12-18 14:28:41] GET action: list
+[2025-12-18 14:28:46] GET request from staff1
+[2025-12-18 14:28:46] User authenticated - ID: 2, Role: staff
+[2025-12-18 14:28:46] GET action: list
+[2025-12-18 14:28:49] GET request from staff1
+[2025-12-18 14:28:49] User authenticated - ID: 2, Role: staff
+[2025-12-18 14:28:49] GET action: my_requests
+[2025-12-18 14:28:49] Found 4 requests for user 2
+[2025-12-18 14:28:55] GET request from staff1
+[2025-12-18 14:28:55] User authenticated - ID: 2, Role: staff
+[2025-12-18 14:28:55] GET action: list

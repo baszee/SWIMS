@@ -1,5 +1,5 @@
 <div class="card">
-    <h2>📊 Monitoring dan Laporan SWIMS</h2>
+    <h2>Monitoring dan Laporan SWIMS</h2>
     <p class="small">Owner dapat memantau status persetujuan, stok saat ini, dan riwayat mutasi barang secara keseluruhan.</p>
 </div>
 

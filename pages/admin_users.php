@@ -28,30 +28,6 @@ Version: 2.0 - Activity Logs Button Fixed + 3PL Enhancements
     </div>
 </div>
 
-<!-- 3PL Info Panel -->
-<div class="card" style="background:#f0f9ff; border-left:4px solid #3b82f6;">
-    <h4 style="margin-top:0; color:#1e40af;">💡 Panduan User Management untuk Gudang 3PL</h4>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-        <div>
-            <h5 style="color:#1e40af; margin:10px 0 5px 0;">Role Definitions:</h5>
-            <ul class="small" style="margin:0; padding-left:20px; color:#1e3a8a;">
-                <li><strong>Admin:</strong> Kelola user, view stock (read-only), lihat activity logs</li>
-                <li><strong>Staff:</strong> Input barang masuk/keluar, request client/supplier baru</li>
-                <li><strong>Supervisor:</strong> Approve transaksi, approve client/supplier baru</li>
-                <li><strong>Owner:</strong> Monitor semua operasional, baca reports, komunikasi dengan supervisor</li>
-            </ul>
-        </div>
-        <div>
-            <h5 style="color:#1e40af; margin:10px 0 5px 0;">Best Practices:</h5>
-            <ul class="small" style="margin:0; padding-left:20px; color:#1e3a8a;">
-                <li>Minimal 1 Admin dan 1 Supervisor harus selalu aktif</li>
-                <li>Gunakan <strong>Status Non-aktif</strong> untuk suspend user sementara (jangan delete)</li>
-                <li>Delete permanen hanya untuk user yang salah input atau duplicate</li>
-                <li>Password default: <code>123456</code> (user harus ganti setelah login pertama)</li>
-            </ul>
-        </div>
-    </div>
-</div>
 
 <script>
 // ========================================
