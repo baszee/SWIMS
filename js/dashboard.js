@@ -96,7 +96,7 @@
                         <div class="stat-value">${Number(stats.pending_out || 0)}</div>
                     </div>
                     <div class="stat-box" style="background:linear-gradient(135deg, ${roleColor} 0%, rgba(0,0,0,0.18) 100%);">
-                        <div class="stat-label">Pending Barang/Klien Baru</div>
+                        <div class="stat-label">Pending Klien/Suplier Baru</div>
                         <div class="stat-value">${Number(stats.pending_new_masters || 0)}</div>
                     </div>
                 </div>

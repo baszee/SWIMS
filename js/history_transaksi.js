@@ -1,11 +1,10 @@
 /**
  * =========================================================
- * HISTORY_TRANSAKSI.JS - v4.5 SECURE (XSS PROTECTED)
+ * HISTORY_TRANSAKSI.JS - MODERN DESIGN & SAFE TERMS
  * Features:
- * - PDF Generation with Signature
- * - Real-time Server-side Hash Verification
- * - Forensic Report Display
- * - XSS Protection via SecurityUtils
+ * - PDF Generation with Cryptographic Hash Seal
+ * - Modern PDF Layout
+ * - XSS Protection
  * =========================================================
  */
 
@@ -88,7 +87,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
                         ${(() => {
                             const withHash = allTransactionHistory.filter(t => t.nota_hash).length;
                             const noHash = allTransactionHistory.length - withHash;
-                            return ` (🔐 ${withHash} signed, ⚠️ ${noHash} legacy)`;
+                            return ` (🔐 ${withHash} secured, ⚠️ ${noHash} legacy)`;
                         })()}
                     </p>
                 </div>
@@ -108,7 +107,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
                         <th>Item</th>
                         <th>Qty</th>
                         <th>Approval Date</th>
-                        <th>Signature</th>
+                        <th>Security</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -132,16 +131,16 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
             ? '<span class="badge badge-in"> MASUK</span>' 
             : '<span class="badge badge-out"> KELUAR</span>';
         
+        // REVISI ISTILAH AMAN
         const signatureBadge = t.nota_hash 
-            ? '<span class="badge" style="background:#10b981; color:white;">🔐 Signed</span>'
+            ? '<span class="badge" style="background:#10b981; color:white;">🔐 Sealed</span>'
             : '<span class="badge" style="background:#f59e0b; color:white;">⚠️ Legacy</span>';
         
-        // ✅ SECURITY FIX: Escape HTML untuk semua input user
         const safeTransactionCode = SecurityUtils.escapeHtml(t.transaction_code);
         const safeItemName = SecurityUtils.escapeHtml(t.item_name);
         const safeSku = SecurityUtils.escapeHtml(t.sku);
         const safeUnit = SecurityUtils.escapeHtml(t.unit || 'pcs');
-        const safeQuantity = SecurityUtils.escapeHtml(t.quantity); // Angka pun di-escape untuk konsistensi
+        const safeQuantity = SecurityUtils.escapeHtml(t.quantity); 
 
         return `
             <tr>
@@ -200,7 +199,6 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
     // VIEW NOTA DETAIL (SECURE)
     // ========================================
     function viewNotaDetail(transaction) {
-        // ✅ SECURITY FIX: Sanitize entire transaction object before use
         const safe = SecurityUtils.sanitizeObject(transaction);
         
         const detailHTML = `
@@ -209,10 +207,11 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
                 
                 ${safe.nota_hash ? `
                     <div style="background:#dcfce7; padding:12px; border-radius:6px; margin:10px 0; border-left:4px solid var(--success);">
-                        <h4 style="margin:0 0 8px 0; color:#166534;">🔐 Digital Signature</h4>
+                        <h4 style="margin:0 0 8px 0; color:#166534;">🔐 Cryptographic Integrity Seal</h4>
                         <code style="font-size:0.75rem; word-break:break-all; display:block; background:#fff; padding:8px; border-radius:4px;">
                             ${safe.nota_hash}
                         </code>
+                        <p class="small" style="margin-top:5px; color:#166534;">(SHA-256 Hash Generated)</p>
                     </div>
                 ` : `
                     <div style="background:#fef3c7; padding:12px; border-radius:6px; margin:10px 0; border-left:4px solid #f59e0b;">
@@ -277,7 +276,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
                 
                 <div style="margin-top: 20px; text-align: center;">
                     <button class="btn success" onclick='window.generateNotaPDF(${JSON.stringify(transaction).replace(/'/g, "&#39;")})'>
-                        📄 Download PDF Nota
+                        📄 Download Nota Resmi
                     </button>
                 </div>
             </div>
@@ -289,35 +288,218 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
     }
 
     // ========================================
-    // GENERATE PDF
+    // GENERATE PDF (MODERN & SAFE TERMS)
     // ========================================
     function generateNotaPDF(transaction) {
-        if (typeof generateSecureNotaPDF === 'function') {
-            generateSecureNotaPDF(
-                transaction,
-                (result) => {
-                    console.log('✅ PDF generated:', result);
-                    if (typeof showMessageModal === 'function') {
-                        showMessageModal(
-                            '✅ PDF Generated!',
-                            `Nota PDF <strong>${result.filename}</strong> berhasil didownload.<br><br>
-                            ${result.has_signature 
-                                ? '<span style="color:var(--success);">🔐 Protected by digital signature</span>' 
-                                : '<span style="color:#f59e0b;">⚠️ Legacy transaction (no digital signature)</span>'}`,
-                            false
-                        );
-                    }
-                },
-                (error) => {
-                    console.error('❌ PDF error:', error);
-                    if (typeof showMessageModal === 'function') {
-                        showMessageModal('Error', 'Gagal generate PDF.', false);
-                    }
+        // Langsung generate manual dengan desain baru (tanpa dependensi shared file jika mau aman)
+        // atau panggil fungsi yang sama persis seperti di approval.js
+        
+        console.log("Generating Modern PDF...");
+        // showLoadingModal('Mencetak Nota...'); // Uncomment if using loading modal
+        
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const trx = transaction;
+            
+            // --- DESIGN CONFIG ---
+            const primaryColor = [30, 58, 138]; // Deep Blue
+            const secondaryColor = [71, 85, 105]; // Slate Gray
+            const lightGray = [241, 245, 249]; // Background Gray
+            
+            // 1. HEADER BLOCK
+            doc.setFillColor(...primaryColor);
+            doc.rect(0, 0, 210, 40, 'F'); // Full width header bar
+            
+            // Logo / Brand Text
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text('SWIMS', 20, 20);
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Secure Warehouse Inventory Management System', 20, 28);
+            
+            // Document Title (Right Aligned in Header)
+            doc.setFontSize(16);
+            doc.text('OFFICIAL RECEIPT', 190, 20, { align: 'right' });
+            doc.setFontSize(10);
+            doc.text('NOTA TRANSAKSI', 190, 28, { align: 'right' });
+
+            // 2. INFO GRID (Background Box)
+            doc.setFillColor(...lightGray);
+            doc.roundedRect(15, 50, 180, 45, 3, 3, 'F');
+            
+            doc.setTextColor(0, 0, 0);
+            let y = 60;
+            
+            // Left Column
+            doc.setFontSize(9);
+            doc.setTextColor(...secondaryColor);
+            doc.text('KODE TRANSAKSI', 25, y);
+            doc.text('TANGGAL REQUEST', 25, y + 12);
+            doc.text('TANGGAL APPROVAL', 25, y + 24);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text(trx.transaction_code, 25, y + 5);
+            
+            const reqDate = trx.request_date ? new Date(trx.request_date).toLocaleDateString('id-ID') : '-';
+            const appDate = trx.approval_date ? new Date(trx.approval_date).toLocaleDateString('id-ID') : '-';
+            doc.text(reqDate, 25, y + 17);
+            doc.text(appDate, 25, y + 29);
+
+            // Right Column
+            doc.setFontSize(9);
+            doc.setTextColor(...secondaryColor);
+            doc.setFont('helvetica', 'normal');
+            doc.text('REQUESTER', 110, y);
+            doc.text('APPROVER', 110, y + 12);
+            doc.text('STATUS', 110, y + 24);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+            doc.text(trx.requester_name || trx.requester || '-', 110, y + 5);
+            doc.text(trx.approver_name || trx.approver || 'Supervisor', 110, y + 17);
+            
+            // Status Badge Look
+            doc.setFillColor(22, 163, 74); // Green
+            doc.roundedRect(110, y + 25, 25, 6, 1, 1, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8);
+            doc.text('APPROVED', 122.5, y + 29, { align: 'center' });
+
+            // 3. ITEM DETAILS TABLE
+            y = 110;
+            // Table Header
+            doc.setFillColor(51, 65, 85); // Dark Slate
+            doc.rect(15, y, 180, 10, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text('ITEM DESCRIPTION', 20, y + 6);
+            doc.text('SKU', 120, y + 6);
+            doc.text('QUANTITY', 170, y + 6);
+            
+            // Table Content
+            y += 10;
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            
+            // Row 1
+            doc.text(trx.item_name, 20, y + 8);
+            doc.text(trx.sku, 120, y + 8);
+            doc.text(`${trx.quantity} ${trx.unit || 'pcs'}`, 170, y + 8);
+            
+            // Line under row
+            doc.setDrawColor(226, 232, 240);
+            doc.line(15, y + 12, 195, y + 12);
+            y += 15;
+
+            // Additional Info (Notes/Supplier)
+            if (trx.supplier_name || trx.recipient_name || trx.note) {
+                doc.setFontSize(9);
+                doc.setTextColor(...secondaryColor);
+                
+                if (trx.type === 'IN' && trx.supplier_name) {
+                    doc.text(`Supplier: ${trx.supplier_name}`, 20, y + 5);
+                    y += 5;
                 }
-            );
-        } else {
+                if (trx.type === 'OUT' && trx.recipient_name) {
+                    doc.text(`Recipient: ${trx.recipient_name}`, 20, y + 5);
+                    if (trx.recipient_address) {
+                        doc.setFontSize(8);
+                        doc.text(`Addr: ${trx.recipient_address}`, 20, y + 9);
+                        y += 4;
+                    }
+                    y += 5;
+                }
+                if (trx.note) {
+                    doc.setFontSize(9);
+                    doc.text(`Note: ${trx.note}`, 20, y + 5);
+                    y += 10;
+                }
+            }
+
+            // 4. SECURITY SECTION (Bottom)
+            y = 220; // Fixed position at bottom
+            
+            if (trx.nota_hash) {
+                // Hash Box
+                doc.setDrawColor(...primaryColor);
+                doc.setLineWidth(0.5);
+                doc.rect(15, y, 180, 25);
+                
+                // Header for Hash - SAFETY TERM
+                doc.setFillColor(...primaryColor);
+                doc.rect(15, y, 180, 6, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(8);
+                doc.setFont('courier', 'bold');
+                doc.text('CRYPTOGRAPHIC INTEGRITY HASH (SHA-256)', 105, y + 4, { align: 'center' });
+                
+                // The Hash
+                doc.setTextColor(0, 0, 0);
+                doc.setFont('courier', 'normal');
+                doc.setFontSize(8);
+                
+                const hashChunks = trx.nota_hash.match(/.{1,64}/g) || [];
+                hashChunks.forEach((chunk, idx) => {
+                    doc.text(chunk, 105, y + 11 + (idx * 4), { align: 'center' });
+                });
+                
+                // Verification Note
+                doc.setFontSize(7);
+                doc.setTextColor(...secondaryColor);
+                doc.text('This document is electronically sealed. Any modification will invalidate this hash.', 105, y + 22, { align: 'center' });
+            }
+
+            // 5. QR CODE
+            const qrData = `SWIMS|${trx.transaction_code}|${trx.type}|${trx.sku}|${trx.quantity}|${trx.nota_hash ? trx.nota_hash.substring(0, 16) : 'NO_HASH'}`;
+            
+            const qrContainer = document.createElement('div');
+            qrContainer.style.display = 'none';
+            document.body.appendChild(qrContainer);
+            
+            // Wait for QR to generate
+            setTimeout(() => {
+                new QRCode(qrContainer, { text: qrData, width: 100, height: 100 });
+                // Small delay to ensure render
+                setTimeout(() => {
+                    const img = qrContainer.querySelector('img');
+                    if (img) {
+                        // Add QR Code at bottom right
+                        doc.addImage(img.src, 'PNG', 160, 250, 30, 30);
+                        doc.setFontSize(6);
+                        doc.text('Scan to Verify', 175, 283, { align: 'center' });
+                    }
+                    document.body.removeChild(qrContainer);
+                    
+                    // 6. FOOTER
+                    const footerY = 290;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 150);
+                    doc.text('Generated by SWIMS System', 15, footerY);
+                    doc.text(`Page 1 of 1`, 195, footerY, { align: 'right' });
+                    
+                    // Save
+                    doc.save(`NOTA_${trx.transaction_code}.pdf`);
+                    
+                    if (typeof showMessageModal === 'function') {
+                        showMessageModal('✅ PDF Generated', 'Nota berhasil didownload.', false);
+                    }
+                }, 100);
+            }, 50);
+            
+        } catch (e) {
+            console.error(e);
             if (typeof showMessageModal === 'function') {
-                showMessageModal('Error', 'PDF generator module not loaded. Please refresh the page.', false);
+                showMessageModal('Error', e.message, false);
             }
         }
     }
