@@ -1,3 +1,4 @@
 logs/supplier_requests.log
 
 logs/receipts/REC_BK-20251217-003.json
+config/security_config.php
