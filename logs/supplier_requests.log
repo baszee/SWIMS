@@ -789,3 +789,6 @@
 [2025-12-18 10:29:05] GET request from staff1
 [2025-12-18 10:29:05] User authenticated - ID: 2, Role: staff
 [2025-12-18 10:29:05] GET action: list
+[2025-12-18 12:50:52] GET request from staff1
+[2025-12-18 12:50:52] User authenticated - ID: 2, Role: staff
+[2025-12-18 12:50:52] GET action: list

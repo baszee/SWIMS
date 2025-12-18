@@ -1,23 +1,19 @@
 <?php
 /**
  * =========================================================
- * GET CSRF TOKEN ENDPOINT
+ * GET CSRF TOKEN ENDPOINT - FIXED (Public Access)
  * File: api/get_csrf_token.php
  * =========================================================
  */
-session_start();
+session_start(); // Start session untuk guest/user
 include('../utils/CsrfProtection.php');
 
 header('Content-Type: application/json');
 
-// Cek sesi login dulu (Token hanya untuk user login)
-if (!isset($_SESSION['user'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-    exit;
-}
+// ❌ HAPUS BAGIAN INI (Biar halaman Login bisa dapat token)
+// if (!isset($_SESSION['user'])) { ... }
 
-// Ambil token
+// Generate atau Ambil Token
 $token = CsrfProtection::getToken();
 
 echo json_encode([

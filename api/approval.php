@@ -1,15 +1,14 @@
 <?php
 /**
  * =========================================================
- * FILE: api/approval.php - FINAL SECURE VERSION
- * Fitur: Hash Integrity + Snapshot + File Log + CSRF + SessionManager
+ * FILE: api/approval.php - FIXED v4.5 (Final Secure + CSRF)
+ * Fitur: Hash Integrity + Snapshot Forensik + File Logging + CSRF Protection
  * =========================================================
  */
-
+session_start();
 include('../config/db_config.php');
 include('../config/security_config.php');
 include('../utils/ActivityLogger.php');
-include('../utils/SessionManager.php'); // Security Helper
 
 header('Content-Type: application/json');
 
@@ -19,45 +18,49 @@ function api_response($success, $message, $data = null, $http_code = 200) {
     exit();
 }
 
-// 1. Wajib Login & Cek Timeout
-SessionManager::requireAuth();
-
-// 2. Role Check (Hanya Supervisor)
-SessionManager::requireRole('supervisor');
-
-$user = SessionManager::getUser();
-$user_id = $user['id'];
-$username = $user['username'];
-
-$logger = new ActivityLogger($pdo);
-
-// 🛡️ SECURITY: CSRF PROTECTION CHECK (POST ONLY)
+// 🛡️ SECURITY: CSRF PROTECTION CHECK
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Pastikan file ini ada di folder utils/
     if (file_exists('../utils/CsrfProtection.php')) {
         include_once('../utils/CsrfProtection.php');
+        
+        // Ambil token dari request (Header/POST/JSON)
         $clientToken = CsrfProtection::getTokenFromRequest();
         
+        // Validasi
         if (!CsrfProtection::validateToken($clientToken)) {
             api_response(false, "Security Error: Invalid CSRF token. Silakan refresh halaman.", null, 403);
         }
     }
 }
 
-// RATE LIMITING (Session Based Backup)
-$rateKey = 'api_rate_approval_' . $user_id . '_' . date('YmdHi');
+// RATE LIMITING
+$rateKey = 'api_rate_approval_' . ($_SESSION['user']['id'] ?? 'guest') . '_' . date('YmdHi');
 $currentCount = $_SESSION[$rateKey] ?? 0;
 if ($currentCount >= 20) api_response(false, "Rate limit exceeded (Too many requests)", null, 429);
 $_SESSION[$rateKey] = $currentCount + 1;
 
+// SECURITY CHECK
+if (!isset($_SESSION['user'])) api_response(false, "Akses ditolak", null, 401);
+if ($_SESSION['user']['role'] !== 'supervisor') api_response(false, "Hanya Supervisor", null, 403);
 
-// REQUEST HANDLER
+$user_id = $_SESSION['user']['id'];
+$username = $_SESSION['user']['username'];
+$logger = new ActivityLogger($pdo);
+
+// SESSION TIMEOUT
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 1800)) {
+    session_destroy();
+    api_response(false, "Session expired", null, 401);
+}
+$_SESSION['last_activity'] = time();
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
-    // GET HANDLER
+    // GET HANDLER (Untuk List Transaksi Pending)
     if ($method === 'GET') {
         $action = $_GET['action'] ?? 'transactions';
-        
         if ($action === 'transactions') {
              $sql = "SELECT t.id, t.transaction_code, t.type, t.quantity, t.request_date, 
                            t.recipient_name, t.recipient_address, t.note,
@@ -70,7 +73,6 @@ try {
                     WHERE t.status = 'PENDING' ORDER BY t.request_date ASC";
             $stmt = $pdo->query($sql);
             api_response(true, "List Transaksi Pending", $stmt->fetchAll(PDO::FETCH_ASSOC));
-            
         } elseif ($action === 'suppliers') {
             $sql = "SELECT s.id, s.name, s.contact_person, s.phone, s.address, 
                            u.username AS requester_name, s.created_at
@@ -112,7 +114,7 @@ try {
                 $pdo->prepare("UPDATE items SET current_stock = current_stock $operator ? WHERE id = ?")
                     ->execute([$trx['quantity'], $trx['item_id']]);
 
-                // ✅ SNAPSHOT
+                // ✅ 1. SIAPKAN SNAPSHOT (DATA ASLI)
                 $approval_timestamp = date('Y-m-d H:i:s');
                 $snapshotArray = [
                     'transaction_code'  => (string)$trx['transaction_code'],
@@ -128,10 +130,10 @@ try {
                 
                 $snapshotJSON = json_encode($snapshotArray);
                 
-                // ✅ HASH
+                // ✅ 2. GENERATE HASH (Data + Key di Server)
                 $nota_hash = hash('sha256', $snapshotJSON . APP_SECRET_KEY);
 
-                // ✅ UPDATE DB
+                // ✅ 3. UPDATE DATABASE
                 $sqlStatus = "UPDATE transactions 
                               SET status = 'APPROVED', 
                                   approved_by_user_id = ?, 
@@ -141,12 +143,12 @@ try {
                               WHERE id = ?";
                 $pdo->prepare($sqlStatus)->execute([$user_id, $approval_timestamp, $nota_hash, $snapshotJSON, $id]);
 
-                // Auto-approve item
+                // Auto-approve item (jika baru)
                 $pdo->prepare("UPDATE items SET is_approved = TRUE WHERE id = ? AND is_approved = FALSE")->execute([$trx['item_id']]);
 
                 $pdo->commit();
 
-                // ✅ FILE LOG
+                // ✅ 4. FITUR TAMBAHAN: FILE LOGGING (BACKUP ANTI-HACK)
                 $logDir = '../logs/receipts/';
                 if (!file_exists($logDir)) mkdir($logDir, 0777, true);
                 
@@ -158,10 +160,10 @@ try {
                 
                 file_put_contents($logDir . 'REC_' . $trx['transaction_code'] . '.json', $logFileContent);
                 
-                // DB Log
+                // Log Activity
                 $logger->log($user_id, $username, 'APPROVE', "Approved transaction {$trx['transaction_code']}");
                 
-                // Response
+                // Response Data
                 $completeTransaction = [
                     'transaction_code' => $trx['transaction_code'],
                     'type' => $trx['type'],
@@ -201,4 +203,4 @@ try {
 } catch (PDOException $e) {
     api_response(false, "Server Error", null, 500);
 }
-?>  
+?>

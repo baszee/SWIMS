@@ -1,9 +1,8 @@
 <?php
-// FILE: api/recipients.php - SECURE VERSION
-// Fungsi: CRUD Penerima Barang
-
+// FILE: api/recipients.php
+// Fungsi: API CRUD untuk Data Master Penerima Barang Keluar
+session_start();
 include('../config/db_config.php'); 
-include('../utils/SessionManager.php'); // Security Helper
 
 header('Content-Type: application/json');
 
@@ -13,29 +12,41 @@ function api_response($success, $message, $data = null, $http_code = 200) {
     exit();
 }
 
-// 1. Wajib Login & Cek Timeout
-SessionManager::requireAuth();
+// ----------------------------------------------------------------------
+// KEAMANAN: Memeriksa Session dan Otorisasi
+// ----------------------------------------------------------------------
 
-// 2. Role Check
-SessionManager::requireRole(['admin', 'staff', 'supervisor', 'owner']);
+if (!isset($_SESSION['user'])) {
+    api_response(false, "Akses ditolak. Silakan login.", null, 401);
+}
 
-$user = SessionManager::getUser();
-$user_role = $user['role'];
+$user_role = $_SESSION['user']['role'];
+$user_id = $_SESSION['user']['id'];
+$allowed_roles = ['admin', 'staff', 'supervisor', 'owner'];
 
-// Request Handler
+if (!in_array($user_role, $allowed_roles)) {
+    api_response(false, "Otorisasi ditolak.", null, 403);
+}
+
+// ----------------------------------------------------------------------
+// PENANGANAN REQUEST
+// ----------------------------------------------------------------------
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
+    
     switch ($method) {
-        
-        // GET: List Penerima
+        // READ: Mengambil daftar Penerima
         case 'GET':
+            // Digunakan untuk mengisi dropdown Staff di form Barang Keluar
             $stmt = $pdo->query("SELECT id, name, type FROM recipients ORDER BY name ASC");
-            api_response(true, "Daftar penerima berhasil diambil.", $stmt->fetchAll(PDO::FETCH_ASSOC));
-            break;
+            $recipients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            api_response(true, "Daftar penerima berhasil diambil.", $recipients);
 
-        // POST: Tambah Penerima (Admin & Staff)
+        // CREATE: Menambah Penerima baru
         case 'POST':
+            // Hanya Admin/Staff yang bisa menambah
             if ($user_role !== 'admin' && $user_role !== 'staff') {
                 api_response(false, "Anda tidak memiliki hak untuk menambahkan penerima.", null, 403);
             }
@@ -53,13 +64,13 @@ try {
             $stmt->execute([$name, $type, $address]);
 
             api_response(true, "Penerima '{$name}' berhasil ditambahkan.", ['id' => $pdo->lastInsertId()], 201);
-            break;
             
-        // PUT: Edit (Hanya Admin)
+        // UPDATE: Mengubah data Penerima
         case 'PUT':
         case 'PATCH':
+            // Hanya Admin yang bisa mengedit
             if ($user_role !== 'admin') {
-                api_response(false, "Hanya Admin yang boleh mengedit data penerima.", null, 403);
+                api_response(false, "Anda tidak memiliki hak untuk mengubah data penerima.", null, 403);
             }
             
             $data = json_decode(file_get_contents("php://input"), true);
@@ -69,42 +80,40 @@ try {
             $address = $data['address'] ?? '';
 
             if (!$id || empty($name) || empty($type)) {
-                api_response(false, "ID, Nama, dan Tipe wajib diisi.", null, 400);
+                api_response(false, "ID, Nama, dan Tipe Penerima wajib diisi.", null, 400);
             }
 
-            $stmt = $pdo->prepare("UPDATE recipients SET name = ?, type = ?, address = ? WHERE id = ?");
+            $sql = "UPDATE recipients SET name = ?, type = ?, address = ? WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
             $stmt->execute([$name, $type, $address, $id]);
 
             api_response(true, "Data Penerima ID:{$id} berhasil diupdate.", null);
-            break;
 
-        // DELETE: Hapus (Hanya Admin)
+        // DELETE: Menghapus Penerima (Hard Delete jika data tidak terkait)
         case 'DELETE':
+            // Hanya Admin yang bisa menghapus
             if ($user_role !== 'admin') {
-                api_response(false, "Hanya Admin yang boleh menghapus penerima.", null, 403);
+                api_response(false, "Anda tidak memiliki hak untuk menghapus penerima.", null, 403);
             }
             
             $id = $_GET['id'] ?? null;
             if (!$id) {
-                api_response(false, "ID Penerima wajib diisi.", null, 400);
+                api_response(false, "ID Penerima wajib diisi untuk menghapus.", null, 400);
             }
             
-            // Hard delete
-            try {
-                $stmt = $pdo->prepare("DELETE FROM recipients WHERE id = ?");
-                $stmt->execute([$id]);
-                api_response(true, "Penerima ID:{$id} berhasil dihapus.", null);
-            } catch (PDOException $e) {
-                api_response(false, "Gagal menghapus: Data mungkin sedang digunakan dalam transaksi.", null, 409);
-            }
-            break;
+            // Perhatian: Ini adalah hard delete. Jika sudah ada transaksi, akan gagal (Foreign Key Constraint)
+            $stmt = $pdo->prepare("DELETE FROM recipients WHERE id = ?");
+            $stmt->execute([$id]);
+
+            api_response(true, "Penerima ID:{$id} berhasil dihapus (hard delete).", null);
 
         default:
             api_response(false, "Method '{$method}' tidak diizinkan.", null, 405);
     }
 
-} catch (PDOException $e) {
-    error_log("DB Error in recipients.php: " . $e->getMessage());
-    api_response(false, "Kesalahan database.", null, 500);
+} catch (\PDOException $e) {
+    // Tangani error database
+    error_log("Database Error in recipients.php: " . $e->getMessage());
+    api_response(false, "Kesalahan server database. Cek log.", null, 500);
 }
 ?>

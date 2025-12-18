@@ -1,9 +1,8 @@
 <?php
-// FILE: api/notes.php - SECURE VERSION
-// Fungsi: Catatan Internal (Hanya Supervisor & Owner)
-
+// FILE: api/notes.php - FIXED VERSION
+// Fungsi: CRUD untuk Catatan Internal (Notes) antara Supervisor dan Owner.
+session_start();
 include('../config/db_config.php'); 
-include('../utils/SessionManager.php'); // Security Helper
 
 header('Content-Type: application/json');
 
@@ -13,24 +12,34 @@ function api_response($success, $message, $data = null, $http_code = 200) {
     exit();
 }
 
-// 1. Wajib Login & Cek Timeout
-SessionManager::requireAuth();
+// ----------------------------------------------------------------------
+// KEAMANAN: Memeriksa Otorisasi Sisi Server
+// ----------------------------------------------------------------------
 
-// 2. Role Check (Hanya Supervisor & Owner)
-SessionManager::requireRole(['supervisor', 'owner']);
+if (!isset($_SESSION['user'])) {
+    api_response(false, "Akses ditolak. Silakan login.", null, 401);
+}
 
-$user = SessionManager::getUser();
-$user_role = $user['role'];
-$user_id = $user['id'];
+$user_role = $_SESSION['user']['role'];
+$user_id = $_SESSION['user']['id'];
 
-// Request Handler
+// Hanya Supervisor dan Owner yang diizinkan mengakses Notes
+if ($user_role !== 'supervisor' && $user_role !== 'owner') {
+    api_response(false, "Otorisasi ditolak. Akses Notes hanya untuk Supervisor dan Owner.", null, 403);
+}
+
+// ----------------------------------------------------------------------
+// PENANGANAN REQUEST
+// ----------------------------------------------------------------------
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 try {
+    
     switch ($method) {
-        
-        // GET: Ambil Notes
+        // READ: Mengambil daftar Notes
         case 'GET':
+            // Notes ditampilkan berdasarkan role: hanya yang dibuat untuk 'all', 'supervisor', atau 'owner'
             $sql = "
                 SELECT n.*, u.username as created_by 
                 FROM notes n
@@ -40,11 +49,12 @@ try {
             ";
             $stmt = $pdo->prepare($sql);
             $stmt->execute([$user_role]);
+            $notes = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            api_response(true, "Daftar catatan internal berhasil diambil.", $stmt->fetchAll(PDO::FETCH_ASSOC));
-            break;
+            api_response(true, "Daftar catatan internal berhasil diambil.", $notes);
+            break; // ← TAMBAHKAN
 
-        // POST: Buat Note Baru
+        // CREATE: Menambah Note baru
         case 'POST':
             $data = json_decode(file_get_contents("php://input"), true);
             $title = trim($data['title'] ?? '');
@@ -59,9 +69,9 @@ try {
             $stmt->execute([$title, $content, $user_id, $target_role]);
 
             api_response(true, "Catatan baru berhasil dipublikasikan.", ['id' => $pdo->lastInsertId()], 201);
-            break;
+            break; // ← TAMBAHKAN
             
-        // DELETE: Hapus Note (Hanya pembuat atau Owner)
+        // DELETE: Menghapus Note (hanya boleh dihapus oleh pembuat atau Admin/Owner)
         case 'DELETE':
             $id = $_GET['id'] ?? null;
             if (!$id) {
@@ -78,14 +88,14 @@ try {
             }
 
             api_response(true, "Catatan ID:{$id} berhasil dihapus.", null);
-            break;
+            break; // ← TAMBAHKAN
 
         default:
             api_response(false, "Method '{$method}' tidak diizinkan.", null, 405);
     }
 
-} catch (PDOException $e) {
-    error_log("DB Error in notes.php: " . $e->getMessage());
-    api_response(false, "Kesalahan database.", null, 500);
+} catch (\PDOException $e) {
+    error_log("Database Error in notes.php: " . $e->getMessage());
+    api_response(false, "Kesalahan server database. Cek log.", null, 500);
 }
-?>
+?> 
