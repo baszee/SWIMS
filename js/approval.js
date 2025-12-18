@@ -1,6 +1,6 @@
 /**
  * =========================================================
- * APPROVAL.JS - FIXED VERSION with PDF Download (Merged)
+ * APPROVAL.JS - FIXED VERSION with PDF Download (Merged) & XSS Protection
  * Fitur: Approval Transaksi & Supplier (Acc/Reject) + PDF Nota
  * =========================================================
  */
@@ -79,7 +79,7 @@ async function loadApprovalData(type) {
 }
 
 // ========================================
-// RENDER FUNCTIONS
+// RENDER FUNCTIONS (XSS PROTECTED)
 // ========================================
 
 function renderTransactionList(transactions) {
@@ -90,22 +90,31 @@ function renderTransactionList(transactions) {
     html += '<th>Kode</th><th>Tipe</th><th>Item</th><th>Qty</th><th>Requester</th><th>Tanggal</th><th>Detail</th><th>Aksi</th></tr></thead><tbody>';
     
     transactions.forEach(t => {
+        // ✅ SECURITY FIX: Escape user input via SecurityUtils
+        const safeItemName = SecurityUtils.escapeHtml(t.item_name);
+        const safeSku = SecurityUtils.escapeHtml(t.sku);
+        const safeUnit = SecurityUtils.escapeHtml(t.unit);
+        const safeRequester = SecurityUtils.escapeHtml(t.requester_name);
+        const safeTransactionCode = SecurityUtils.escapeHtml(t.transaction_code);
+        const safeQuantity = SecurityUtils.escapeHtml(t.quantity);
+        const safeSupplier = SecurityUtils.escapeHtml(t.supplier_name || '-');
+        const safeRecipient = SecurityUtils.escapeHtml(t.recipient_name || '-');
+
         const typeBadge = t.type === 'IN' 
             ? '<span class="badge badge-in">⬇️ MASUK</span>' 
             : '<span class="badge badge-out">⬆️ KELUAR</span>';
         
         let detailInfo = t.type === 'IN' 
-            ? `<span class="small">Supplier: <b>${t.supplier_name || '-'}</b></span>`
-            : `<span class="small">Penerima: <b>${t.recipient_name || '-'}</b></span>`;
+            ? `<span class="small">Supplier: <b>${safeSupplier}</b></span>`
+            : `<span class="small">Penerima: <b>${safeRecipient}</b></span>`;
         
-        // Note: Kita mengirimkan ID saja, data detail akan diambil dari respons API saat approval sukses
         html += `
             <tr>
-                <td><b>${t.transaction_code}</b></td>
+                <td><b>${safeTransactionCode}</b></td>
                 <td>${typeBadge}</td>
-                <td>${t.item_name}<br><span class="small">(${t.sku})</span></td>
-                <td><b>${t.quantity}</b> ${t.unit}</td>
-                <td>${t.requester_name}</td>
+                <td>${safeItemName}<br><span class="small">(${safeSku})</span></td>
+                <td><b>${safeQuantity}</b> ${safeUnit}</td>
+                <td>${safeRequester}</td>
                 <td>${t.request_date.substring(0, 16)}</td>
                 <td>${detailInfo}</td>
                 <td>
@@ -128,13 +137,20 @@ function renderSupplierList(suppliers) {
     html += '<th>Nama</th><th>Kontak</th><th>Telepon</th><th>Alamat</th><th>Requester</th><th>Tanggal</th><th>Aksi</th></tr></thead><tbody>';
     
     suppliers.forEach(s => {
+        // ✅ SECURITY FIX: Escape user input via SecurityUtils
+        const safeName = SecurityUtils.escapeHtml(s.name);
+        const safeContact = SecurityUtils.escapeHtml(s.contact_person || '-');
+        const safePhone = SecurityUtils.escapeHtml(s.phone || '-');
+        const safeAddress = SecurityUtils.escapeHtml(s.address || '-');
+        const safeRequester = SecurityUtils.escapeHtml(s.requester_name);
+
         html += `
             <tr>
-                <td><b>${s.name}</b></td>
-                <td>${s.contact_person || '-'}</td>
-                <td>${s.phone || '-'}</td>
-                <td class="small">${s.address || '-'}</td>
-                <td>${s.requester_name}</td>
+                <td><b>${safeName}</b></td>
+                <td>${safeContact}</td>
+                <td>${safePhone}</td>
+                <td class="small">${safeAddress}</td>
+                <td>${safeRequester}</td>
                 <td>${s.created_at.substring(0, 16)}</td>
                 <td>
                     <div style="display:flex; gap:5px;">
@@ -151,7 +167,7 @@ function renderSupplierList(suppliers) {
 }
 
 // ========================================
-// APPROVAL ACTION HANDLER - FIXED v4.1 (REPLACED)
+// APPROVAL ACTION HANDLER
 // ========================================
 
 async function handleApprovalAction(action, id, transactionData = null) {
@@ -175,17 +191,10 @@ async function handleApprovalAction(action, id, transactionData = null) {
                 
                 if (data.success) {
                     // ✅ APPROVE SUCCESS - Show PDF Download Option
-                    // Cek apakah ada data transaksi yang dikembalikan untuk keperluan PDF
                     if (isApprove && action === 'approve_transaction' && data.data && data.data.transaction) {
                         currentApprovedTransaction = data.data.transaction;
                         
-                        // ✅ FIXED: Log untuk debug
                         console.log('✅ Approved transaction data:', currentApprovedTransaction);
-                        console.log('   → Has hash:', !!currentApprovedTransaction.nota_hash);
-                        console.log('   → Has approver:', !!currentApprovedTransaction.approver);
-                        console.log('   → Has requester:', !!currentApprovedTransaction.requester);
-                        console.log('   → Has unit:', !!currentApprovedTransaction.unit);
-                        
                         showApprovalSuccessModal(data.data.transaction);
                     } else {
                         showMessageModal('✅ Sukses', data.message, false);
@@ -212,24 +221,20 @@ async function handleApprovalAction(action, id, transactionData = null) {
 }
 
 // ========================================
-// SHOW APPROVAL SUCCESS MODAL - FIXED (REPLACED)
+// SHOW APPROVAL SUCCESS MODAL
 // ========================================
 
 function showApprovalSuccessModal(transaction) {
     const notaNumber = `NOTE-${transaction.id}-${Date.now().toString().slice(-6)}`;
     const hasHash = !!transaction.nota_hash;
     
-    // ✅ FIXED: Validasi data lengkap
+    // Validasi data lengkap
     const missingFields = [];
     if (!transaction.nota_hash) missingFields.push('nota_hash');
     if (!transaction.approver && !transaction.approver_name) missingFields.push('approver');
-    if (!transaction.requester && !transaction.requester_name) missingFields.push('requester');
-    if (!transaction.unit) missingFields.push('unit');
     
-    if (missingFields.length > 0) {
-        console.error('⚠️ Missing transaction fields:', missingFields);
-        console.log('Transaction data:', transaction);
-    }
+    // ✅ SECURITY FIX: Sanitize object before display
+    const safe = SecurityUtils.sanitizeObject(transaction);
     
     const modalContent = `
         <div style="text-align:center;">
@@ -240,7 +245,7 @@ function showApprovalSuccessModal(transaction) {
                 <div style="background:#dcfce7; padding:12px; border-radius:8px; margin:15px 0; border-left:4px solid var(--success);">
                     <h4 style="margin:0 0 8px 0; color:#166534;">🔐 Digital Signature Generated</h4>
                     <p class="small" style="margin:0; color:#166534;">
-                        Hash: <code style="font-size:0.75rem;">${transaction.nota_hash.substring(0, 32)}...</code>
+                        Hash: <code style="font-size:0.75rem;">${safe.nota_hash.substring(0, 32)}...</code>
                     </p>
                 </div>
             ` : `
@@ -256,39 +261,30 @@ function showApprovalSuccessModal(transaction) {
                 <table style="width:100%; font-size:0.9rem;">
                     <tr>
                         <td style="padding:5px 0;"><strong>Kode:</strong></td>
-                        <td style="padding:5px 0;">${transaction.transaction_code}</td>
+                        <td style="padding:5px 0;">${safe.transaction_code}</td>
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Type:</strong></td>
-                        <td style="padding:5px 0;">${transaction.type === 'IN' ? '📦 BARANG MASUK' : '📤 BARANG KELUAR'}</td>
+                        <td style="padding:5px 0;">${safe.type === 'IN' ? '📦 BARANG MASUK' : '📤 BARANG KELUAR'}</td>
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Item:</strong></td>
-                        <td style="padding:5px 0;">${transaction.item_name} (${transaction.sku})</td>
+                        <td style="padding:5px 0;">${safe.item_name} (${safe.sku})</td>
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Quantity:</strong></td>
-                        <td style="padding:5px 0;"><strong>${transaction.quantity}</strong> ${transaction.unit || 'pcs'}</td>
+                        <td style="padding:5px 0;"><strong>${safe.quantity}</strong> ${safe.unit || 'pcs'}</td>
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Requester:</strong></td>
-                        <td style="padding:5px 0;">${transaction.requester || transaction.requester_name || '-'}</td>
+                        <td style="padding:5px 0;">${safe.requester || safe.requester_name || '-'}</td>
                     </tr>
                     <tr>
                         <td style="padding:5px 0;"><strong>Approver:</strong></td>
-                        <td style="padding:5px 0;">${transaction.approver || transaction.approver_name || 'System'}</td>
+                        <td style="padding:5px 0;">${safe.approver || safe.approver_name || 'System'}</td>
                     </tr>
                 </table>
             </div>
-            
-            ${missingFields.length > 0 ? `
-                <div style="background:#fee2e2; padding:12px; border-radius:8px; margin:15px 0; border-left:4px solid #ef4444;">
-                    <p class="small" style="margin:0; color:#991b1b;">
-                        ⚠️ Warning: Missing fields (${missingFields.join(', ')})<br>
-                        PDF may have incomplete data
-                    </p>
-                </div>
-            ` : ''}
             
             <div style="display:flex; gap:12px; justify-content:center; margin-top:20px;">
                 <button class="btn success" onclick="downloadApprovedNotaPDF()">
@@ -306,7 +302,6 @@ function showApprovalSuccessModal(transaction) {
 
 // ========================================
 // GENERATE PDF FROM APPROVAL
-// Renamed to match the onclick handler: downloadApprovedNotaPDF
 // ========================================
 async function downloadApprovedNotaPDF() {
     if (!currentApprovedTransaction) {
@@ -319,7 +314,6 @@ async function downloadApprovedNotaPDF() {
     showLoadingModal('Generating PDF...');
     
     try {
-        // Check if jsPDF is available
         if (typeof window.jspdf === 'undefined') {
             throw new Error('jsPDF library not loaded!');
         }
@@ -338,7 +332,6 @@ async function downloadApprovedNotaPDF() {
         doc.setFont(undefined, 'normal');
         doc.text('Secure Warehouse Inventory Management System', 105, 27, { align: 'center' });
         
-        // Horizontal line
         doc.setLineWidth(0.5);
         doc.line(20, 32, 190, 32);
         
@@ -355,7 +348,6 @@ async function downloadApprovedNotaPDF() {
         doc.setFontSize(10);
         doc.setFont(undefined, 'normal');
         
-        // Use data from API response
         const approvalDate = currentApprovedTransaction.updated_at || new Date().toLocaleString('id-ID');
         const approverName = currentApprovedTransaction.approver || currentApprovedTransaction.approver_name || 'Supervisor';
         const requesterName = currentApprovedTransaction.requester || currentApprovedTransaction.requester_name || '-';
@@ -418,7 +410,7 @@ async function downloadApprovedNotaPDF() {
         });
         
         // ========================================
-        // QR CODE (WITH HASH)
+        // QR CODE
         // ========================================
         y += 10;
         doc.setFontSize(12);
@@ -426,12 +418,7 @@ async function downloadApprovedNotaPDF() {
         doc.text('DIGITAL VERIFICATION', 20, y);
         
         y += 5;
-        
-        // Generate compact QR data WITH HASH
         const qrData = generateCompactQRData(currentApprovedTransaction);
-        console.log('QR Data for PDF:', qrData);
-        
-        // Generate QR Code
         const qrContainer = document.createElement('div');
         qrContainer.style.display = 'none';
         document.body.appendChild(qrContainer);
@@ -454,13 +441,11 @@ async function downloadApprovedNotaPDF() {
                     resolve();
                 }, 100);
             } else {
-                console.warn('QRCode.js not available');
                 document.body.removeChild(qrContainer);
                 resolve();
             }
         });
         
-        // QR Code info and Hash Display
         doc.setFontSize(8);
         doc.setFont(undefined, 'italic');
         doc.text('Scan untuk verifikasi keaslian dokumen', 20, y + 45);
@@ -471,44 +456,29 @@ async function downloadApprovedNotaPDF() {
              doc.text(`Hash: ${currentApprovedTransaction.nota_hash.substring(0, 50)}...`, 20, y + 50);
         }
 
-        // ========================================
-        // FOOTER
-        // ========================================
+        // Footer
         const footerY = 280;
         doc.setLineWidth(0.3);
         doc.line(20, footerY, 190, footerY);
-        
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.text('Generated by SWIMS - Secure Warehouse Inventory Management System', 105, footerY + 5, { align: 'center' });
         doc.text(`Generated at: ${new Date().toLocaleString('id-ID')}`, 105, footerY + 9, { align: 'center' });
         
-        // ========================================
-        // SAVE PDF
-        // ========================================
         const filename = `NOTA_${currentApprovedTransaction.transaction_code}_${Date.now()}.pdf`;
         doc.save(filename);
         
-        console.log('✅ PDF generated:', filename);
-        
-        // Close the approval success modal
         closeApprovalSuccessModal();
         
         showMessageModal(
             '✅ PDF Generated!',
-            `Nota PDF <strong>${filename}</strong> berhasil didownload.<br><br>
-            <span class="small">File tersimpan di folder Downloads browser Anda.</span>`,
+            `Nota PDF <strong>${filename}</strong> berhasil didownload.<br><br><span class="small">File tersimpan di folder Downloads browser Anda.</span>`,
             false
         );
         
     } catch (error) {
         console.error('❌ PDF generation error:', error);
-        showMessageModal(
-            '❌ Error',
-            `Gagal generate PDF: ${error.message}<br><br>
-            <span class="small">Pastikan library jsPDF dan QRCode.js sudah ter-load.</span>`,
-            false
-        );
+        showMessageModal('❌ Error', `Gagal generate PDF: ${error.message}`, false);
     } finally {
         hideLoadingModal();
     }
@@ -518,7 +488,6 @@ async function downloadApprovedNotaPDF() {
 // HELPER: Generate Compact QR Data
 // ========================================
 function generateCompactQRData(transaction) {
-    // Format: SWIMS|CODE|TYPE|SKU|QTY|HASH
     const hash = transaction.nota_hash ? transaction.nota_hash.substring(0, 16) : 'NOHASH';
     return `SWIMS|${transaction.transaction_code}|${transaction.type}|${transaction.sku}|${transaction.quantity}|${hash}`;
 }
@@ -527,13 +496,10 @@ function generateCompactQRData(transaction) {
 // CLOSE APPROVAL SUCCESS MODAL
 // ========================================
 function closeApprovalSuccessModal() {
-    // Find and close the custom modal
     const modal = document.getElementById('customModal');
     if (modal) {
         modal.style.display = 'none';
     }
-    
-    // Clear stored transaction
     currentApprovedTransaction = null;
 }
 
@@ -566,4 +532,4 @@ window.filterTransactions = filterTransactions;
 window.downloadApprovedNotaPDF = downloadApprovedNotaPDF;
 window.closeApprovalSuccessModal = closeApprovalSuccessModal;
 
-console.log('✅ Approval Module Loaded with PDF Support (Merged Version)');
+console.log('✅ Approval Module Loaded with PDF Support (XSS Protected)');

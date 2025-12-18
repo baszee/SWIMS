@@ -1,14 +1,15 @@
 /**
  * =========================================================
- * HISTORY_TRANSAKSI.JS - v4.4 FIXED (FULL VERSION)
+ * HISTORY_TRANSAKSI.JS - v4.5 SECURE (XSS PROTECTED)
  * Features:
  * - PDF Generation with Signature
  * - Real-time Server-side Hash Verification
- * - Forensic Report Display (New!)
+ * - Forensic Report Display
+ * - XSS Protection via SecurityUtils
  * =========================================================
  */
 
-console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
+console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED version...');
 
 (function() {
     'use strict';
@@ -19,7 +20,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
     // INIT HISTORY PAGE
     // ========================================
     function init_history_transaksi() {
-        console.log('🚀 Init History Transaksi v4.4');
+        console.log('🚀 Init History Transaksi v4.5');
         loadNotaHistory();
     }
 
@@ -123,7 +124,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
     }
 
     // ========================================
-    // RENDER NOTA ROW
+    // RENDER NOTA ROW (SECURE)
     // ========================================
     function renderNotaRow(t, index) {
         const notaNumber = `NOTE-${t.id}-${Date.now().toString().slice(-6)}`;
@@ -135,16 +136,23 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
             ? '<span class="badge" style="background:#10b981; color:white;">🔐 Signed</span>'
             : '<span class="badge" style="background:#f59e0b; color:white;">⚠️ Legacy</span>';
         
+        // ✅ SECURITY FIX: Escape HTML untuk semua input user
+        const safeTransactionCode = SecurityUtils.escapeHtml(t.transaction_code);
+        const safeItemName = SecurityUtils.escapeHtml(t.item_name);
+        const safeSku = SecurityUtils.escapeHtml(t.sku);
+        const safeUnit = SecurityUtils.escapeHtml(t.unit || 'pcs');
+        const safeQuantity = SecurityUtils.escapeHtml(t.quantity); // Angka pun di-escape untuk konsistensi
+
         return `
             <tr>
                 <td><span class="small">${notaNumber}</span></td>
-                <td><strong>${t.transaction_code}</strong></td>
+                <td><strong>${safeTransactionCode}</strong></td>
                 <td>${typeBadge}</td>
                 <td>
-                    <strong>${t.item_name}</strong><br>
-                    <span class="small">(${t.sku})</span>
+                    <strong>${safeItemName}</strong><br>
+                    <span class="small">(${safeSku})</span>
                 </td>
-                <td><strong>${t.quantity}</strong> ${t.unit || 'pcs'}</td>
+                <td><strong>${safeQuantity}</strong> ${safeUnit}</td>
                 <td class="small">${t.approval_date ? t.approval_date.substring(0, 16) : '-'}</td>
                 <td>${signatureBadge}</td>
                 <td>
@@ -155,7 +163,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
                         📄 PDF
                     </button>
                     ${t.nota_hash ? `
-                        <button class="btn btn-sm" style="background:#8b5cf6; color:white;" onclick='window.verifyNotaHash("${t.transaction_code}")'>
+                        <button class="btn btn-sm" style="background:#8b5cf6; color:white;" onclick='window.verifyNotaHash("${safeTransactionCode}")'>
                             🔍 Verify
                         </button>
                     ` : ''}
@@ -189,18 +197,21 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
     }
 
     // ========================================
-    // VIEW NOTA DETAIL
+    // VIEW NOTA DETAIL (SECURE)
     // ========================================
     function viewNotaDetail(transaction) {
+        // ✅ SECURITY FIX: Sanitize entire transaction object before use
+        const safe = SecurityUtils.sanitizeObject(transaction);
+        
         const detailHTML = `
             <div style="text-align: left;">
                 <h3 style="margin-top: 0; color: var(--primary);">📋 Transaction Detail</h3>
                 
-                ${transaction.nota_hash ? `
+                ${safe.nota_hash ? `
                     <div style="background:#dcfce7; padding:12px; border-radius:6px; margin:10px 0; border-left:4px solid var(--success);">
                         <h4 style="margin:0 0 8px 0; color:#166534;">🔐 Digital Signature</h4>
                         <code style="font-size:0.75rem; word-break:break-all; display:block; background:#fff; padding:8px; border-radius:4px;">
-                            ${transaction.nota_hash}
+                            ${safe.nota_hash}
                         </code>
                     </div>
                 ` : `
@@ -214,46 +225,52 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
                 <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600; width: 40%;">Transaction Code:</td>
-                        <td style="padding: 8px;"><strong>${transaction.transaction_code}</strong></td>
+                        <td style="padding: 8px;"><strong>${safe.transaction_code}</strong></td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Type:</td>
                         <td style="padding: 8px;">
-                            <span class="badge ${transaction.type === 'IN' ? 'badge-in' : 'badge-out'}">
-                                ${transaction.type === 'IN' ? '📦 BARANG MASUK' : '📤 BARANG KELUAR'}
+                            <span class="badge ${safe.type === 'IN' ? 'badge-in' : 'badge-out'}">
+                                ${safe.type === 'IN' ? '📦 BARANG MASUK' : '📤 BARANG KELUAR'}
                             </span>
                         </td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Item:</td>
-                        <td style="padding: 8px;">${transaction.item_name} (${transaction.sku})</td>
+                        <td style="padding: 8px;">${safe.item_name} (${safe.sku})</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Quantity:</td>
-                        <td style="padding: 8px;"><strong>${transaction.quantity}</strong> ${transaction.unit || 'pcs'}</td>
+                        <td style="padding: 8px;"><strong>${safe.quantity}</strong> ${safe.unit || 'pcs'}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Requester:</td>
-                        <td style="padding: 8px;">${transaction.requester || '-'}</td>
+                        <td style="padding: 8px;">${safe.requester || '-'}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Approver:</td>
-                        <td style="padding: 8px;">${transaction.approver || 'System'}</td>
+                        <td style="padding: 8px;">${safe.approver || 'System'}</td>
                     </tr>
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Approval Date:</td>
-                        <td style="padding: 8px;">${transaction.approval_date ? new Date(transaction.approval_date).toLocaleString('id-ID') : '-'}</td>
+                        <td style="padding: 8px;">${safe.approval_date ? new Date(safe.approval_date).toLocaleString('id-ID') : '-'}</td>
                     </tr>
-                    ${transaction.recipient_name ? `
+                    ${safe.recipient_name ? `
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Recipient:</td>
-                        <td style="padding: 8px;">${transaction.recipient_name}<br><span class="small">${transaction.recipient_address || ''}</span></td>
+                        <td style="padding: 8px;">${safe.recipient_name}<br><span class="small">${safe.recipient_address || ''}</span></td>
                     </tr>
                     ` : ''}
-                    ${transaction.supplier_name ? `
+                    ${safe.supplier_name ? `
                     <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 8px; font-weight: 600;">Supplier:</td>
-                        <td style="padding: 8px;">${transaction.supplier_name}</td>
+                        <td style="padding: 8px;">${safe.supplier_name}</td>
+                    </tr>
+                    ` : ''}
+                    ${safe.note ? `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 8px; font-weight: 600;">Note:</td>
+                        <td style="padding: 8px;"><em>${safe.note}</em></td>
                     </tr>
                     ` : ''}
                 </table>
@@ -402,5 +419,5 @@ console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
     window.verifyNotaHash = verifyNotaHash;
     window.exportNotaList = exportNotaList;
 
-    console.log('✅ [HISTORY_TRANSAKSI v4.4] Module loaded SECURE FULL');
+    console.log('✅ [HISTORY_TRANSAKSI v4.5] Module loaded SECURE & XSS PROTECTED');
 })();

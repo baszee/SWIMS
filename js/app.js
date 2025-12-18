@@ -1,7 +1,8 @@
 /**
  * =========================================================
- * APP.JS - CORE MODULE v3.0 - SIDEBAR LAYOUT
+ * APP.JS - CORE MODULE v3.1 - SIDEBAR LAYOUT & CSRF
  * Sidebar Navigation with Dynamic Role Colors
+ * Features: Automatic CSRF Token Injection
  * =========================================================
  */
 
@@ -399,27 +400,23 @@ function logout(){
 // ========================================
 function loadPage(page){
     window.location.hash = page;
-    
     console.log(`📄 Loading page: ${page}`);
     
     // HIDE LOADING MODAL SEBELUM PROSES PAGE CHANGE
     hideLoadingModal(); 
 
-    // Update header (will be handled by checkSessionAndRender on hash change if needed)
+    // Update header
     updatePageHeader(page);
-    
-    // Update active nav
     updateActiveNavItem();
     
     const contentHeader = document.getElementById('contentHeader');
 
-    // Show/hide sidebar and content header based on page
     if (page === 'login') {
         hideSidebar();
         if (contentHeader) contentHeader.style.display = 'none';
     } else {
         showSidebar();
-        if (contentHeader) contentHeader.style.display = 'block'; // Ensure header is shown after login
+        if (contentHeader) contentHeader.style.display = 'block'; 
     }
     
     fetch(`pages/${page}.php`) 
@@ -432,7 +429,6 @@ function loadPage(page){
         
         console.log(`✅ Page HTML loaded: ${page}`);
         
-        // Minimal delay untuk memastikan DOM ter-render sebelum memanggil init function
         setTimeout(() => {
             const initFuncName = 'init_' + page;
             console.log(`🔍 Looking for ${initFuncName} function...`);
@@ -504,6 +500,76 @@ function roleLanding(role){
 }
 
 // ========================================
+// 🔐 AUTOMATIC CSRF PROTECTION (INTERCEPTOR)
+// ========================================
+(function() {
+    'use strict';
+    
+    let cachedCsrfToken = null;
+
+    /**
+     * 1. Fungsi ambil token dari server
+     */
+    async function fetchCsrfToken() {
+        if (cachedCsrfToken) return cachedCsrfToken; // Pakai cache kalau ada
+
+        try {
+            const response = await fetch('api/get_csrf_token.php');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    cachedCsrfToken = data.token;
+                    console.log('🔐 CSRF Token initialized');
+                    return cachedCsrfToken;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch CSRF token:', error);
+        }
+        return null;
+    }
+
+    /**
+     * 2. Override window.fetch (Monkey Patch)
+     * Ini akan membajak semua request 'fetch' di aplikasi
+     * dan menyisipkan token secara otomatis ke Header.
+     */
+    const originalFetch = window.fetch;
+
+    window.fetch = async function(url, options = {}) {
+        // Cek method (hanya POST, PUT, DELETE yang butuh token)
+        const method = options.method ? options.method.toUpperCase() : 'GET';
+        
+        // Jangan inject token saat request token itu sendiri (biar ga infinite loop)
+        if (['POST', 'PUT', 'DELETE'].includes(method) && !url.includes('get_csrf_token.php')) {
+            
+            // Ambil token (dari cache atau server)
+            const token = await fetchCsrfToken();
+
+            if (token) {
+                // Siapkan headers
+                options.headers = options.headers || {};
+                
+                // Jika headers instance dari Headers API
+                if (options.headers instanceof Headers) {
+                    options.headers.append('X-CSRF-Token', token);
+                } else {
+                    // Jika headers object biasa
+                    options.headers['X-CSRF-Token'] = token;
+                }
+            }
+        }
+
+        // Jalankan fetch yang asli
+        return originalFetch(url, options);
+    };
+
+    // Panggil sekali saat load page biar token siap
+    fetchCsrfToken();
+
+})();
+
+// ========================================
 // EXPOSE TO GLOBAL
 // ========================================
 window.loadPage = loadPage;
@@ -520,9 +586,6 @@ window.loadMasterData = loadMasterData;
 window.setRoleColor = setRoleColor;
 window.renderSidebarUser = renderSidebarUser;
 window.renderSidebarNav = renderSidebarNav;
-window.setRoleColor = setRoleColor;
-window.renderSidebarUser = renderSidebarUser;
-window.renderSidebarNav = renderSidebarNav;
-window.ROLE_COLORS = ROLE_COLORS; // EXPOSE ROLE COLORS
+window.ROLE_COLORS = ROLE_COLORS;
 
-console.log('✅ SWIMS Core App JS v3.1 Loaded (FIXED)');
+console.log('✅ SWIMS Core App JS v3.1 Loaded + CSRF Protection');

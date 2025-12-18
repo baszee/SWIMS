@@ -1,8 +1,8 @@
 <?php
 /**
  * =========================================================
- * FILE: api/approval.php - FIXED v4.4 (Final Secure)
- * Fitur: Hash Integrity + Snapshot Forensik + File Logging
+ * FILE: api/approval.php - FIXED v4.5 (Final Secure + CSRF)
+ * Fitur: Hash Integrity + Snapshot Forensik + File Logging + CSRF Protection
  * =========================================================
  */
 session_start();
@@ -18,10 +18,26 @@ function api_response($success, $message, $data = null, $http_code = 200) {
     exit();
 }
 
+// 🛡️ SECURITY: CSRF PROTECTION CHECK
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Pastikan file ini ada di folder utils/
+    if (file_exists('../utils/CsrfProtection.php')) {
+        include_once('../utils/CsrfProtection.php');
+        
+        // Ambil token dari request (Header/POST/JSON)
+        $clientToken = CsrfProtection::getTokenFromRequest();
+        
+        // Validasi
+        if (!CsrfProtection::validateToken($clientToken)) {
+            api_response(false, "Security Error: Invalid CSRF token. Silakan refresh halaman.", null, 403);
+        }
+    }
+}
+
 // RATE LIMITING
 $rateKey = 'api_rate_approval_' . ($_SESSION['user']['id'] ?? 'guest') . '_' . date('YmdHi');
 $currentCount = $_SESSION[$rateKey] ?? 0;
-if ($currentCount >= 10) api_response(false, "Rate limit exceeded", null, 429);
+if ($currentCount >= 20) api_response(false, "Rate limit exceeded (Too many requests)", null, 429);
 $_SESSION[$rateKey] = $currentCount + 1;
 
 // SECURITY CHECK
@@ -99,7 +115,6 @@ try {
                     ->execute([$trx['quantity'], $trx['item_id']]);
 
                 // ✅ 1. SIAPKAN SNAPSHOT (DATA ASLI)
-                // Paksa string untuk konsistensi hash
                 $approval_timestamp = date('Y-m-d H:i:s');
                 $snapshotArray = [
                     'transaction_code'  => (string)$trx['transaction_code'],
@@ -111,13 +126,11 @@ try {
                     'recipient_address' => (string)$trx['recipient_address'],
                     'approval_date'     => (string)$approval_timestamp,
                     'approved_by'       => (string)$user_id
-                    // NOTE: Secret Key TIDAK dimasukkan ke sini agar aman di DB
                 ];
                 
                 $snapshotJSON = json_encode($snapshotArray);
                 
                 // ✅ 2. GENERATE HASH (Data + Key di Server)
-                // Hash hanya valid jika Snapshot cocok dengan Secret Key
                 $nota_hash = hash('sha256', $snapshotJSON . APP_SECRET_KEY);
 
                 // ✅ 3. UPDATE DATABASE
@@ -136,7 +149,6 @@ try {
                 $pdo->commit();
 
                 // ✅ 4. FITUR TAMBAHAN: FILE LOGGING (BACKUP ANTI-HACK)
-                // Simpan copy struk di folder logs (Harddisk)
                 $logDir = '../logs/receipts/';
                 if (!file_exists($logDir)) mkdir($logDir, 0777, true);
                 
@@ -151,7 +163,7 @@ try {
                 // Log Activity
                 $logger->log($user_id, $username, 'APPROVE', "Approved transaction {$trx['transaction_code']}");
                 
-                // Response
+                // Response Data
                 $completeTransaction = [
                     'transaction_code' => $trx['transaction_code'],
                     'type' => $trx['type'],
@@ -191,4 +203,4 @@ try {
 } catch (PDOException $e) {
     api_response(false, "Server Error", null, 500);
 }
-?>  
+?>

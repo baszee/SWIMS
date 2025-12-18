@@ -1,18 +1,18 @@
 <?php
 /**
  * =========================================================
- * FILE: api/auth.php - ENHANCED with Security Features
- * Version: 3.0
+ * FILE: api/auth.php - FINAL SECURE VERSION (v4.0)
  * Features:
- * - Activity Logging
+ * - Activity Logging (Preserved)
  * - Session Timeout (30 minutes)
- * - Rate Limiting
- * - IP Tracking
+ * - IP-Based Rate Limiting (Database Backed) 🔥
+ * - Anti-Session Fixation (Regenerate ID) 🔥
  * =========================================================
  */
 
 session_start();
 include('../config/db_config.php');
+include('../config/security_config.php');
 include('../utils/ActivityLogger.php');
 
 header('Content-Type: application/json');
@@ -21,7 +21,7 @@ header('Content-Type: application/json');
 $logger = new ActivityLogger($pdo);
 
 // ========================================
-// SESSION TIMEOUT CHECK (30 minutes)
+// 1. SESSION TIMEOUT CHECK (30 minutes)
 // ========================================
 if (isset($_SESSION['last_activity'])) {
     $elapsed = time() - $_SESSION['last_activity'];
@@ -34,6 +34,7 @@ if (isset($_SESSION['last_activity'])) {
             ['elapsed_seconds' => $elapsed]
         );
         
+        session_unset();
         session_destroy();
         http_response_code(401);
         exit(json_encode([
@@ -46,20 +47,66 @@ if (isset($_SESSION['last_activity'])) {
 $_SESSION['last_activity'] = time();
 
 // ========================================
-// RATE LIMITING (5 attempts per minute for login)
+// 2. DATABASE RATE LIMITING (IP BASED) 🔥
 // ========================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $rateKey = 'login_rate_' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown') . '_' . date('YmdHi');
-    $currentCount = $_SESSION[$rateKey] ?? 0;
+function checkRateLimit($pdo, $ip) {
+    // Bersihkan log lama (opsional, biar tabel gak penuh)
+    // $pdo->query("DELETE FROM login_attempts WHERE locked_until < NOW() - INTERVAL 1 DAY");
 
-    if ($currentCount >= 5) {
-        http_response_code(429);
+    $stmt = $pdo->prepare("SELECT * FROM login_attempts WHERE ip_address = ?");
+    $stmt->execute([$ip]);
+    $attempt = $stmt->fetch();
+
+    if ($attempt) {
+        // Cek apakah sedang terkunci
+        if ($attempt['locked_until'] && new DateTime($attempt['locked_until']) > new DateTime()) {
+            return false; // TERKUNCI
+        }
+        // Reset jika waktu kunci sudah lewat
+        if ($attempt['locked_until'] && new DateTime($attempt['locked_until']) <= new DateTime()) {
+            $pdo->prepare("UPDATE login_attempts SET attempts = 0, locked_until = NULL WHERE ip_address = ?")->execute([$ip]);
+            return true;
+        }
+    }
+    return true; // Aman
+}
+
+function recordFailedLogin($pdo, $ip) {
+    $stmt = $pdo->prepare("SELECT * FROM login_attempts WHERE ip_address = ?");
+    $stmt->execute([$ip]);
+    $attempt = $stmt->fetch();
+
+    if ($attempt) {
+        $newAttempts = $attempt['attempts'] + 1;
+        if ($newAttempts >= 5) {
+            // Kunci selama 15 menit
+            $lockedUntil = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+            $pdo->prepare("UPDATE login_attempts SET attempts = ?, last_attempt = NOW(), locked_until = ? WHERE ip_address = ?")
+                ->execute([$newAttempts, $lockedUntil, $ip]);
+        } else {
+            $pdo->prepare("UPDATE login_attempts SET attempts = ?, last_attempt = NOW() WHERE ip_address = ?")
+                ->execute([$newAttempts, $ip]);
+        }
+    } else {
+        $pdo->prepare("INSERT INTO login_attempts (ip_address, attempts, last_attempt) VALUES (?, 1, NOW())")
+            ->execute([$ip]);
+    }
+}
+
+function resetLoginAttempts($pdo, $ip) {
+    $pdo->prepare("DELETE FROM login_attempts WHERE ip_address = ?")->execute([$ip]);
+}
+
+// Cek Rate Limit Sebelum Proses Login
+$clientIP = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!checkRateLimit($pdo, $clientIP)) {
+        http_response_code(429); // Too Many Requests
         exit(json_encode([
             'success' => false, 
-            'message' => 'Terlalu banyak percobaan login. Tunggu 1 menit.'
+            'message' => 'Terlalu banyak percobaan gagal. IP Anda diblokir sementara selama 15 menit.'
         ]));
     }
-    $_SESSION[$rateKey] = $currentCount + 1;
 }
 
 // ========================================
@@ -85,21 +132,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user) {
             // Check if user is active
             if ($user['is_active'] == 0) {
-                // Log failed login attempt (inactive account)
-                $logger->log(
-                    $user['id'],
-                    $user['username'],
-                    'LOGIN_FAILED',
-                    "Login failed: Account is inactive",
-                    ['reason' => 'inactive_account', 'role' => $role_request]
-                );
-                
+                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Login failed: Account inactive", ['role' => $role_request]);
                 echo json_encode(['success' => false, 'message' => 'Akun Anda telah dinonaktifkan.']);
                 exit;
             }
             
             // Verify password
             if (password_verify($password, $user['password'])) {
+                
+                // 🔥 SECURITY FIX 1: Session Fixation
+                session_regenerate_id(true);
+
+                // 🔥 SECURITY FIX 2: Reset Rate Limit jika sukses
+                resetLoginAttempts($pdo, $clientIP);
+
                 // ✅ LOGIN SUCCESS
                 $_SESSION['user'] = [
                     'id' => $user['id'],
@@ -107,58 +153,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'role' => $user['role'],
                     'logged_at' => date('Y-m-d H:i:s')
                 ];
-                
-                // Set initial last_activity
                 $_SESSION['last_activity'] = time();
 
-                // Log successful login
-                $logger->log(
-                    $user['id'],
-                    $user['username'],
-                    'LOGIN',
-                    "User logged in as {$user['role']}",
-                    [
-                        'role' => $user['role'],
-                        'login_time' => date('Y-m-d H:i:s'),
-                        'session_id' => session_id()
-                    ]
-                );
+                $logger->log($user['id'], $user['username'], 'LOGIN', "User logged in as {$user['role']}", ['session_id' => session_id()]);
 
-                echo json_encode([
-                    'success' => true, 
-                    'message' => 'Login berhasil!', 
-                    'role' => $user['role']
-                ]);
+                echo json_encode(['success' => true, 'message' => 'Login berhasil!', 'role' => $user['role']]);
                 
             } else {
                 // ❌ WRONG PASSWORD
-                $logger->log(
-                    $user['id'],
-                    $user['username'],
-                    'LOGIN_FAILED',
-                    "Login failed: Incorrect password",
-                    ['reason' => 'wrong_password', 'role' => $role_request]
-                );
+                recordFailedLogin($pdo, $clientIP); // Catat kegagalan ke DB
                 
-                echo json_encode(['success' => false, 'message' => 'Password salah untuk role ini.']);
+                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Wrong password", ['role' => $role_request]);
+                echo json_encode(['success' => false, 'message' => 'Password salah.']);
             }
         } else {
             // ❌ USER NOT FOUND
-            $logger->log(
-                0, // Special ID for unknown users
-                $username,
-                'LOGIN_FAILED',
-                "Login failed: User not found with role {$role_request}",
-                ['reason' => 'user_not_found', 'role' => $role_request]
-            );
+            recordFailedLogin($pdo, $clientIP); // Catat kegagalan ke DB
             
-            echo json_encode(['success' => false, 'message' => 'User tidak ditemukan dengan role tersebut.']);
+            $logger->log(0, $username, 'LOGIN_FAILED', "User not found", ['role' => $role_request]);
+            echo json_encode(['success' => false, 'message' => 'User tidak ditemukan.']);
         }
         
     } catch (\PDOException $e) {
-        error_log("Database Error in login: " . $e->getMessage());
+        error_log("DB Error: " . $e->getMessage());
         http_response_code(500);
-        exit(json_encode(['success' => false, 'message' => 'Kesalahan server. Koneksi database gagal.']));
+        exit(json_encode(['success' => false, 'message' => 'Server Error.']));
     }
 }
 
@@ -169,7 +188,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET['action'] ?? '';
     
     if ($action === 'check_session') {
-        // Check login status
         if (isset($_SESSION['user'])) {
             echo json_encode(['logged_in' => true, 'user' => $_SESSION['user']]);
         } else {
@@ -177,24 +195,11 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
         
     } else if ($action === 'logout') {
-        // Log logout before destroying session
         if (isset($_SESSION['user'])) {
-            $logger->log(
-                $_SESSION['user']['id'],
-                $_SESSION['user']['username'],
-                'LOGOUT',
-                "User logged out",
-                [
-                    'role' => $_SESSION['user']['role'],
-                    'logout_time' => date('Y-m-d H:i:s')
-                ]
-            );
+            $logger->log($_SESSION['user']['id'], $_SESSION['user']['username'], 'LOGOUT', "User logged out");
         }
-        
-        // Destroy session
-        unset($_SESSION['user']);
+        session_unset();
         session_destroy();
-        
         echo json_encode(['success' => true, 'message' => 'Logout berhasil.']);
     }
 }

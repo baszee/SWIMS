@@ -73,6 +73,8 @@ session_start();
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+  <script src="js/security_utils.js"></script>
+
   <!-- App Scripts -->
   <script src="js/theme_manager.js"></script>
   <script src="js/app.js"></script>
