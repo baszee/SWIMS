@@ -927,3 +927,18 @@
 [2025-12-18 14:28:55] GET request from staff1
 [2025-12-18 14:28:55] User authenticated - ID: 2, Role: staff
 [2025-12-18 14:28:55] GET action: list
+[2025-12-18 16:25:32] GET request from staff1
+[2025-12-18 16:25:32] User authenticated - ID: 2, Role: staff
+[2025-12-18 16:25:32] GET action: list
+[2025-12-18 16:34:45] GET request from staff1
+[2025-12-18 16:34:45] User authenticated - ID: 2, Role: staff
+[2025-12-18 16:34:45] GET action: list
+[2025-12-18 16:35:48] GET request from staff1
+[2025-12-18 16:35:48] User authenticated - ID: 2, Role: staff
+[2025-12-18 16:35:48] GET action: list
+[2025-12-18 16:49:29] GET request from staff1
+[2025-12-18 16:49:29] User authenticated - ID: 2, Role: staff
+[2025-12-18 16:49:29] GET action: list
+[2025-12-18 16:50:43] GET request from staff1
+[2025-12-18 16:50:43] User authenticated - ID: 2, Role: staff
+[2025-12-18 16:50:43] GET action: list

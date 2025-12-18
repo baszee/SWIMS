@@ -67,7 +67,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
             historyDiv.innerHTML = `
                 <div class="card">
                     <p style="color:var(--danger);">❌ Error: ${error.message}</p>
-                    <button class="btn primary btn-sm" onclick="window.loadNotaHistory()">🔄 Coba Lagi</button>
+                    <button class="btn primary btn-sm" onclick="window.loadNotaHistory()"> Coba Lagi</button>
                 </div>
             `;
         }
@@ -82,7 +82,7 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
         let html = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <div>
-                    <h3 style="margin: 0;">📦 Approved Transactions</h3>
+                    <h3 style="margin: 0;"> Approved Transactions</h3>
                     <p class="small" style="margin: 5px 0 0 0;">
                         Total: <strong>${allTransactionHistory.length}</strong> nota
                         ${(() => {
@@ -129,8 +129,8 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
     function renderNotaRow(t, index) {
         const notaNumber = `NOTE-${t.id}-${Date.now().toString().slice(-6)}`;
         const typeBadge = t.type === 'IN' 
-            ? '<span class="badge badge-in">📦 MASUK</span>' 
-            : '<span class="badge badge-out">📤 KELUAR</span>';
+            ? '<span class="badge badge-in"> MASUK</span>' 
+            : '<span class="badge badge-out"> KELUAR</span>';
         
         const signatureBadge = t.nota_hash 
             ? '<span class="badge" style="background:#10b981; color:white;">🔐 Signed</span>'
@@ -157,14 +157,14 @@ console.log('📋 [HISTORY_TRANSAKSI v4.5] Loading SECURE & XSS PROTECTED versio
                 <td>${signatureBadge}</td>
                 <td>
                     <button class="btn primary btn-sm" onclick='window.viewNotaDetail(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
-                        👁️ View
+                         View
                     </button>
                     <button class="btn success btn-sm" onclick='window.generateNotaPDF(${JSON.stringify(t).replace(/'/g, "&#39;")})'>
-                        📄 PDF
+                         PDF
                     </button>
                     ${t.nota_hash ? `
                         <button class="btn btn-sm" style="background:#8b5cf6; color:white;" onclick='window.verifyNotaHash("${safeTransactionCode}")'>
-                            🔍 Verify
+                             Verify
                         </button>
                     ` : ''}
                 </td>
