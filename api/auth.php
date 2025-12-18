@@ -1,13 +1,14 @@
 <?php
 /**
  * =========================================================
- * FILE: api/auth.php - ULTIMATE SECURE VERSION (v5.0)
+ * FILE: api/auth.php - ULTIMATE SECURE VERSION (v5.1 - Auto Role)
  * Features:
  * - Activity Logging (Full Detail)
  * - Session Timeout (30 min)
  * - Database Rate Limiting (IP Based - Anti Brute Force)
  * - Anti-Session Fixation
- * - CSRF Token Generation (NEW!)
+ * - CSRF Token Generation
+ * - Auto Role Detection (No user input required)
  * =========================================================
  */
 
@@ -119,23 +120,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents("php://input"), true);
     $username = trim($data['username'] ?? '');
     $password = $data['password'] ?? '';
-    $role_request = $data['role'] ?? '';
+    // NOTE: Role tidak lagi diambil dari input user
 
-    if (empty($username) || empty($password) || empty($role_request)) {
+    if (empty($username) || empty($password)) {
         http_response_code(400);
-        exit(json_encode(['success' => false, 'message' => 'Semua kolom wajib diisi.']));
+        exit(json_encode(['success' => false, 'message' => 'Username dan Password wajib diisi.']));
     }
 
     try {
-        // Cek User
-        $stmt = $pdo->prepare("SELECT id, username, password, role, is_active FROM users WHERE username = ? AND role = ?");
-        $stmt->execute([$username, $role_request]);
+        // Cek User (Query hanya berdasarkan Username)
+        $stmt = $pdo->prepare("SELECT id, username, password, role, is_active FROM users WHERE username = ?");
+        $stmt->execute([$username]);
         $user = $stmt->fetch();
 
         if ($user) {
             // Cek Aktif
             if ($user['is_active'] == 0) {
-                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Account inactive", ['role' => $role_request]);
+                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Account inactive (Role: {$user['role']})");
                 echo json_encode(['success' => false, 'message' => 'Akun Anda telah dinonaktifkan.']);
                 exit;
             }
@@ -149,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // ✅ 2. Reset Rate Limit (Hapus dari DB karena sukses)
                 resetLoginAttempts($pdo, $clientIP);
 
-                // ✅ 3. Generate CSRF Token (BARU DITAMBAHKAN DISINI)
+                // ✅ 3. Generate CSRF Token
                 if (empty($_SESSION['csrf_token'])) {
                     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
                 }
@@ -158,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['user'] = [
                     'id' => $user['id'],
                     'username' => $user['username'],
-                    'role' => $user['role'],
+                    'role' => $user['role'], // Role diambil dari Database
                     'logged_at' => date('Y-m-d H:i:s')
                 ];
                 $_SESSION['last_activity'] = time();
@@ -166,21 +167,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Log Sukses
                 $logger->log($user['id'], $user['username'], 'LOGIN', "Logged in as {$user['role']}", ['session_id' => session_id()]);
 
+                // Kirim response sukses beserta role untuk frontend redirect
                 echo json_encode(['success' => true, 'message' => 'Login berhasil!', 'role' => $user['role']]);
                 
             } else {
                 // ❌ Salah Password
                 recordFailedLogin($pdo, $clientIP); // Catat ke DB
                 
-                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Wrong password", ['role' => $role_request]);
+                $logger->log($user['id'], $user['username'], 'LOGIN_FAILED', "Wrong password");
                 echo json_encode(['success' => false, 'message' => 'Password salah.']);
             }
         } else {
             // ❌ User Tidak Ditemukan
             recordFailedLogin($pdo, $clientIP); // Catat ke DB
             
-            $logger->log(0, $username, 'LOGIN_FAILED', "User not found", ['role' => $role_request]);
-            echo json_encode(['success' => false, 'message' => 'User tidak ditemukan.']);
+            $logger->log(0, $username, 'LOGIN_FAILED', "User not found");
+            echo json_encode(['success' => false, 'message' => 'Username atau Password salah.']);
         }
         
     } catch (\PDOException $e) {
@@ -204,7 +206,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             echo json_encode([
                 'logged_in' => true, 
                 'user' => $_SESSION['user'],
-                'csrf_token' => $_SESSION['csrf_token'] ?? null // Kirim token ke frontend
+                'csrf_token' => $_SESSION['csrf_token'] ?? null 
             ]);
         } else {
             echo json_encode(['logged_in' => false, 'user' => null]);

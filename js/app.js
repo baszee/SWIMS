@@ -47,7 +47,7 @@ const ROLE_MENUS = {
         { section: 'Main', items: [
             { icon: '', label: 'Dashboard', page: 'supervisor' },
             { icon: '', label: 'Inventaris Stok', page: 'inventory' }
-        ]},
+        ]}, 
         { section: 'Approval', items: [
             { icon: '', label: 'Approval Transaksi', page: 'approval' },
             { icon: '', label: 'Approval Supplier/Klien', page: 'approval_items' }
@@ -60,7 +60,6 @@ const ROLE_MENUS = {
     'admin': [
         { section: 'Main', items: [
             { icon: '', label: 'Dashboard', page: 'admin' },
-            { icon: '', label: 'Inventaris Stok', page: 'inventory' }
         ]},
         { section: 'Management', items: [
             { icon: '', label: 'User Management', page: 'admin_users' },
