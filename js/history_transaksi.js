@@ -1,11 +1,14 @@
 /**
  * =========================================================
- * HISTORY_TRANSAKSI.JS - v3.1 FIXED
- * Fix: Complete data for PDF, proper hash display
+ * HISTORY_TRANSAKSI.JS - v4.4 FIXED (FULL VERSION)
+ * Features:
+ * - PDF Generation with Signature
+ * - Real-time Server-side Hash Verification
+ * - Forensic Report Display (New!)
  * =========================================================
  */
 
-console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
+console.log('📋 [HISTORY_TRANSAKSI v4.4] Loading FORENSIC version...');
 
 (function() {
     'use strict';
@@ -16,7 +19,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     // INIT HISTORY PAGE
     // ========================================
     function init_history_transaksi() {
-        console.log('🚀 Init History Transaksi v3.1');
+        console.log('🚀 Init History Transaksi v4.4');
         loadNotaHistory();
     }
 
@@ -41,7 +44,6 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
             }
             
             const data = await response.json();
-            console.log('Nota history data:', data);
             
             if (!data.success || data.data.length === 0) {
                 historyDiv.innerHTML = '<p style="text-align:center; color:var(--muted);">Tidak ada nota transaksi yang sudah approved.</p>';
@@ -57,12 +59,6 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
             }
             
             console.log(`✅ Loaded ${allTransactionHistory.length} approved transactions`);
-            
-            // ✅ FIXED: Log hash status
-            const withHash = allTransactionHistory.filter(t => t.nota_hash).length;
-            const noHash = allTransactionHistory.length - withHash;
-            console.log(`   → With hash: ${withHash}, No hash: ${noHash}`);
-            
             renderNotaTable();
             
         } catch (error) {
@@ -77,7 +73,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     }
 
     // ========================================
-    // RENDER NOTA TABLE - FIXED
+    // RENDER NOTA TABLE
     // ========================================
     function renderNotaTable() {
         const historyDiv = document.getElementById('notaHistoryList');
@@ -127,7 +123,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     }
 
     // ========================================
-    // RENDER NOTA ROW - FIXED
+    // RENDER NOTA ROW
     // ========================================
     function renderNotaRow(t, index) {
         const notaNumber = `NOTE-${t.id}-${Date.now().toString().slice(-6)}`;
@@ -135,7 +131,6 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
             ? '<span class="badge badge-in">📦 MASUK</span>' 
             : '<span class="badge badge-out">📤 KELUAR</span>';
         
-        // ✅ FIXED: Signature badge dengan warna berbeda
         const signatureBadge = t.nota_hash 
             ? '<span class="badge" style="background:#10b981; color:white;">🔐 Signed</span>'
             : '<span class="badge" style="background:#f59e0b; color:white;">⚠️ Legacy</span>';
@@ -175,8 +170,8 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     function filterNotaTable() {
         const searchInput = document.getElementById('searchNota');
         const query = searchInput ? searchInput.value.toLowerCase() : '';
-        
         const tbody = document.getElementById('notaTableBody');
+        
         if (!tbody) return;
         
         if (!query) {
@@ -194,7 +189,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     }
 
     // ========================================
-    // VIEW NOTA DETAIL - FIXED
+    // VIEW NOTA DETAIL
     // ========================================
     function viewNotaDetail(transaction) {
         const detailHTML = `
@@ -261,12 +256,6 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
                         <td style="padding: 8px;">${transaction.supplier_name}</td>
                     </tr>
                     ` : ''}
-                    ${transaction.note ? `
-                    <tr>
-                        <td style="padding: 8px; font-weight: 600;">Notes:</td>
-                        <td style="padding: 8px;"><em>${transaction.note}</em></td>
-                    </tr>
-                    ` : ''}
                 </table>
                 
                 <div style="margin-top: 20px; text-align: center;">
@@ -283,15 +272,9 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     }
 
     // ========================================
-    // GENERATE PDF - FIXED
+    // GENERATE PDF
     // ========================================
     function generateNotaPDF(transaction) {
-        console.log('📄 Generate PDF from history:', transaction.transaction_code);
-        console.log('   → Has hash:', !!transaction.nota_hash);
-        console.log('   → Has recipient:', !!transaction.recipient_name);
-        console.log('   → Has supplier:', !!transaction.supplier_name);
-        console.log('   → Has unit:', !!transaction.unit);
-        
         if (typeof generateSecureNotaPDF === 'function') {
             generateSecureNotaPDF(
                 transaction,
@@ -310,6 +293,9 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
                 },
                 (error) => {
                     console.error('❌ PDF error:', error);
+                    if (typeof showMessageModal === 'function') {
+                        showMessageModal('Error', 'Gagal generate PDF.', false);
+                    }
                 }
             );
         } else {
@@ -320,61 +306,60 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     }
 
     // ========================================
-    // VERIFY NOTA HASH
+    // VERIFY NOTA HASH (SECURE FORENSIC CHECK)
     // ========================================
     async function verifyNotaHash(transactionCode) {
-        if (typeof showLoadingModal === 'function') showLoadingModal('Verifying nota signature...');
+        if (typeof showMessageModal === 'function') {
+            showMessageModal('Verifikasi', '⏳ Melakukan Audit Forensik...', false);
+        }
         
         try {
-            const transaction = allTransactionHistory.find(t => t.transaction_code === transactionCode);
+            const response = await fetch(`api/verify.php?code=${transactionCode}`);
+            const result = await response.json();
             
-            if (!transaction) {
-                throw new Error('Transaksi tidak ditemukan');
-            }
+            console.log('🔍 Verify result:', result);
             
-            if (!transaction.nota_hash) {
-                if (typeof showMessageModal === 'function') {
-                    showMessageModal('⚠️ Legacy Transaction', 
-                        'Transaksi ini tidak memiliki signature hash.<br>Ini adalah transaksi lama yang di-approve sebelum sistem hash diterapkan.', 
-                        false
-                    );
-                }
-                return;
-            }
-            
-            // Display verification result
-            if (typeof showMessageModal === 'function') {
-                showMessageModal('🔍 Hash Verification', 
+            if (result.status === 'VALID') {
+                showMessageModal('✅ DATA VALID', 
                     `<div style="text-align:left;">
-                        <p><strong>Kode Transaksi:</strong> ${transaction.transaction_code}</p>
-                        <p><strong>Status:</strong> ${transaction.status}</p>
-                        <p><strong>Approval Date:</strong> ${new Date(transaction.approval_date).toLocaleString('id-ID')}</p>
-                        <hr style="margin:15px 0;">
-                        <h4 style="margin:0 0 10px 0; color:#1e40af;">🔐 Digital Signature:</h4>
-                        <code style="word-break:break-all; font-size:0.8rem; display:block; background:#f8fafc; padding:10px; border-radius:6px; border:1px solid #e2e8f0;">
-                            ${transaction.nota_hash}
-                        </code>
-                        <hr style="margin:15px 0;">
-                        <div style="background:#dcfce7; padding:12px; border-radius:6px; border-left:4px solid var(--success);">
-                            <p style="margin:0; color:#166534; font-weight:600;">
-                                ✅ Nota ini VALID dan belum diubah sejak di-approve
-                            </p>
+                        <p><strong>Kode:</strong> ${result.data.transaction_code}</p>
+                        <p><strong>Qty:</strong> ${result.data.quantity}</p>
+                        <div style="background:#dcfce7; padding:10px; border-radius:6px; color:#166534; margin:10px 0;">
+                            ✅ <strong>Integritas data terjamin.</strong><br>
+                            Data di database cocok dengan Snapshot Digital. Tidak ada manipulasi.
                         </div>
-                        <p class="small" style="margin:10px 0 0 0; color:#64748b;">
-                            Hash SHA-256 ini di-generate saat transaksi di-approve. Jika data transaksi diubah di database, 
-                            hash tidak akan cocok lagi dan manipulasi akan terdeteksi.
-                        </p>
-                    </div>`, 
-                    false
-                );
+                        <p class="small">Hash Signature: <code>${result.data.hash}</code></p>
+                    </div>`, false);
+            } 
+            else if (result.status === 'INVALID') {
+                // Tampilkan Laporan Forensik
+                let reportHTML = '<ul style="color:#7f1d1d; padding-left:20px; text-align:left;">';
+                if (result.data.forensic_report && result.data.forensic_report.length > 0) {
+                    result.data.forensic_report.forEach(item => reportHTML += `<li>${item}</li>`);
+                } else {
+                    reportHTML += '<li>Perubahan terdeteksi namun detail tidak spesifik.</li>';
+                }
+                reportHTML += '</ul>';
+
+                showMessageModal('🚨 PERINGATAN BAHAYA!', 
+                    `<div style="text-align:left;">
+                        <p><strong>Kode:</strong> ${result.data.transaction_code}</p>
+                        <div style="background:#fee2e2; padding:10px; border-radius:6px; border-left:4px solid #ef4444; margin:10px 0;">
+                            <h4 style="margin:0; color:#991b1b;">❌ TAMPERING DETECTED!</h4>
+                            <p style="color:#7f1d1d; margin-bottom:10px;">Sistem mendeteksi manipulasi data (perbedaan antara Database vs Snapshot).</p>
+                            <hr style="border-top:1px solid #fca5a5;">
+                            <strong>🔍 Laporan Forensik:</strong>
+                            ${reportHTML}
+                        </div>
+                        <p class="small text-muted">Silakan cek File Log Server jika Snapshot juga rusak.</p>
+                    </div>`, false);
             }
-            
+            else {
+                showMessageModal('Info', result.message, false);
+            }
         } catch (error) {
-            if (typeof showMessageModal === 'function') {
-                showMessageModal('Error', 'Gagal verifikasi: ' + error.message, false);
-            }
-        } finally {
-            if (typeof hideLoadingModal === 'function') hideLoadingModal();
+            console.error(error);
+            showMessageModal('Error', 'Gagal verifikasi: ' + error.message, false);
         }
     }
 
@@ -383,9 +368,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     // ========================================
     function exportNotaList() {
         if (allTransactionHistory.length === 0) {
-            if (typeof showMessageModal === 'function') {
-                showMessageModal('Info', 'Tidak ada data untuk diekspor.', false);
-            }
+            if (typeof showMessageModal === 'function') showMessageModal('Info', 'Tidak ada data.', false);
             return;
         }
         
@@ -405,9 +388,7 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
         a.click();
         window.URL.revokeObjectURL(url);
         
-        if (typeof showMessageModal === 'function') {
-            showMessageModal('✅ Sukses', 'Transaction history berhasil diekspor!', false);
-        }
+        if (typeof showMessageModal === 'function') showMessageModal('✅ Sukses', 'Berhasil diekspor!', false);
     }
 
     // ========================================
@@ -421,5 +402,5 @@ console.log('📋 [HISTORY_TRANSAKSI v3.1] Loading FIXED version...');
     window.verifyNotaHash = verifyNotaHash;
     window.exportNotaList = exportNotaList;
 
-    console.log('✅ [HISTORY_TRANSAKSI v3.1] Module loaded FIXED');
+    console.log('✅ [HISTORY_TRANSAKSI v4.4] Module loaded SECURE FULL');
 })();

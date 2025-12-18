@@ -734,3 +734,34 @@
 [2025-12-17 06:10:04] GET request from staff1
 [2025-12-17 06:10:04] User authenticated - ID: 2, Role: staff
 [2025-12-17 06:10:04] GET action: list
+[2025-12-17 11:44:29] GET request from staff1
+[2025-12-17 11:44:29] User authenticated - ID: 2, Role: staff
+[2025-12-17 11:44:29] GET action: list
+[2025-12-17 11:45:01] GET request from staff1
+[2025-12-17 11:45:01] User authenticated - ID: 2, Role: staff
+[2025-12-17 11:45:01] GET action: list
+[2025-12-17 11:46:01] GET request from staff1
+[2025-12-17 11:46:01] User authenticated - ID: 2, Role: staff
+[2025-12-17 11:46:01] GET action: list
+[2025-12-17 18:58:24] GET request from staff1
+[2025-12-17 18:58:24] User authenticated - ID: 2, Role: staff
+[2025-12-17 18:58:24] GET action: list
+[2025-12-17 18:58:26] GET request from staff1
+[2025-12-17 18:58:26] User authenticated - ID: 2, Role: staff
+[2025-12-17 18:58:26] GET action: my_requests
+[2025-12-17 18:58:26] Found 4 requests for user 2
+[2025-12-17 18:58:47] GET request from staff1
+[2025-12-17 18:58:47] User authenticated - ID: 2, Role: staff
+[2025-12-17 18:58:47] GET action: list
+[2025-12-17 19:19:48] GET request from staff1
+[2025-12-17 19:19:48] User authenticated - ID: 2, Role: staff
+[2025-12-17 19:19:48] GET action: list
+[2025-12-17 19:20:24] GET request from staff1
+[2025-12-17 19:20:24] User authenticated - ID: 2, Role: staff
+[2025-12-17 19:20:24] GET action: list
+[2025-12-17 19:59:11] GET request from staff1
+[2025-12-17 19:59:11] User authenticated - ID: 2, Role: staff
+[2025-12-17 19:59:11] GET action: list
+[2025-12-17 19:59:41] GET request from staff1
+[2025-12-17 19:59:41] User authenticated - ID: 2, Role: staff
+[2025-12-17 19:59:41] GET action: list
