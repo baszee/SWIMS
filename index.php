@@ -75,6 +75,8 @@ session_start();
 
   <script src="js/security_utils.js"></script>
 
+  <script src="js/pdf_generator.js"></script>
+    
   <!-- App Scripts -->
   <script src="js/theme_manager.js"></script>
   <script src="js/app.js"></script>
@@ -89,7 +91,6 @@ session_start();
   <script src="js/inventory.js"></script>
   <script src="js/activity_logs.js"></script>
   <script src="js/owner_report.js"></script>
-  <script src="js/pdf_generator.js"></script>
     
   <script>
     // Initialize app
